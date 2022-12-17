@@ -60,24 +60,24 @@ class Cell:
         self.collisionModifier = [0,0]
         self.generationNumber = previousGenerationNumber + 1
 
-    """ Modifies Cell angle by Cell angularVelocity """
     def turn(self):
+        """ Modifies Cell angle by Cell angularVelocity """
         self.angle += self.angularVelocity
         self.angle %= 2 * pi
 
-    """ Modifies position according to speed, angle and collisionModifier """
     def move(self):
+        """ Modifies position according to speed, angle and collisionModifier """
         self.xyPos[0] += self.speed * cos(self.angle)
         self.xyPos[1] += self.speed * sin(self.angle)
-
-    """ Detect if collision is happening and modify collisionModifier.
-
-    We check how close this cell and otherCell are to each other. If they are colliding,
-    apply a movement on both cells directly away from each other that will be processed
-    in `move()`.
     
-    """
     def findCollision(self, otherCell):
+        """ Detect if collision is happening and modify collisionModifier.
+
+        We check how close this cell and otherCell are to each other. If they are colliding,
+        apply a movement on both cells directly away from each other that will be processed
+        in `move()`.
+        
+        """
         distance = (self.xyPos[0] - otherCell.xyPos[0])**2 + (self.xyPos[1] - otherCell.xypos[1])**2
 
         if distance > (Cell.CELL_RADIUS * 2)**2:
@@ -85,8 +85,42 @@ class Cell:
 
         raise NotImplementedError()
 
-
-    """ Draw the cell on `canvas` """
     def draw(self, canvas):
+        """ Draw the cell on `canvas` """
         raise NotImplementedError()
 
+    def canSplit(self):
+        """ Virtual method for checking if cell is able to split """
+        raise NotImplementedError()
+
+    def split(self):
+        if self.canSplit():
+            raise NotImplementedError()
+
+
+class Predator(Cell):
+    MAXIMUM_DIGESTION_TIMER = 100
+    MAXIMUM_ENERGY = 100
+    INITIAL_ENERGY = 50
+    PREDATOR_RAY_ANGLES = [-14, -12, -10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10, 12, 14]
+
+    def __init__(self, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = [0,0]):
+        super().__init__(self, inheritingNetwork, previousGenerationNumber, xyPos)
+        self.energy = Predator.INITIAL_ENERGY
+        self.digestionTimer = 0
+
+    def getVision(self):
+        """ Get vision as input for neural network"""
+        raise NotImplementedError()
+
+    def getMove(self):
+        """ Feed vision input from `getVision()` into neural network """
+        raise NotImplementedError()
+    
+    def eatPrey(self, victim):
+        """ Attempt to eat `victim` """
+        raise NotImplementedError()
+    
+    def canSplit(self):
+        """ Check if cell has enough energy to split """
+        return self.energy >= Predator.MAXIMUM_ENERGY
