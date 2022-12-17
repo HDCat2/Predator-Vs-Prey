@@ -52,22 +52,22 @@ class Cell:
     PREY_COLOUR = (0,255,0)
     PREDATOR_COLOUR = (255,0,0)
 
-    def __init__(self, startingNetwork = EMPTY_NETWORK, previousGenerationNumber = -1, xyPos):
+    def __init__(self, startingNetwork = EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = [0, 0]):
         self.speed = 0
-        self.angle = DEFAULT_ANGLE
+        self.angle = Cell.DEFAULT_ANGLE
         self.angularVelocity = 0
         self.collisionModifier = [0,0]
         self.generationNumber = previousGenerationNumber + 1
 
     """ Modifies Cell angle by Cell angularVelocity """
-    def turn():
-        angle += angularVelocity
-        angle %= 2 * pi
+    def turn(self):
+        self.angle += self.angularVelocity
+        self.angle %= 2 * pi
 
     """ Modifies position according to speed, angle and collisionModifier """
-    def move():
-        xyPos[0] += speed * cos(angle)
-        xyPos[1] += speed * sin(angle)
+    def move(self):
+        self.xyPos[0] += self.speed * cos(self.angle)
+        self.xyPos[1] += self.speed * sin(self.angle)
     
     """ Detect if collision is happening and modify collisionModifier.
 
@@ -76,19 +76,16 @@ class Cell:
     in `move()`.
     
     """
-    def findCollision(otherCell):
-        distance = (xyPos[0] - otherCell.xyPos[0])**2 + (xyPos[1] - otherCell.xypos[1])**2
+    def findCollision(self, otherCell):
+        distance = (self.xyPos[0] - otherCell.xyPos[0])**2 + (self.xyPos[1] - otherCell.xypos[1])**2
 
-        if distance > (CELL_RADIUS * 2)**2:
+        if distance > (Cell.CELL_RADIUS * 2)**2:
             return
         
         raise NotImplementedError()
 
     
     """ Draw the cell on `canvas` """
-    def draw(canvas):
+    def draw(self, canvas):
         raise NotImplementedError()
 
-m = Map(1, 1, 1, 1, 1, 1)
-while True:
-    m.updateHistory()
