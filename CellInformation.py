@@ -1,3 +1,4 @@
+
 from math import *
 from datetime import datetime
 from time import time
@@ -68,7 +69,7 @@ class Cell:
     def move(self):
         self.xyPos[0] += self.speed * cos(self.angle)
         self.xyPos[1] += self.speed * sin(self.angle)
-    
+
     """ Detect if collision is happening and modify collisionModifier.
 
     We check how close this cell and otherCell are to each other. If they are colliding,
@@ -81,10 +82,10 @@ class Cell:
 
         if distance > (Cell.CELL_RADIUS * 2)**2:
             return
-        
+
         raise NotImplementedError()
 
-    
+
     """ Draw the cell on `canvas` """
     def draw(self, canvas):
         raise NotImplementedError()
