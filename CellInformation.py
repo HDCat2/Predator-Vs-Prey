@@ -5,7 +5,7 @@ from time import time
 
 class Map:
     def __init__(self, width: int, height: int, startPreys: int, startPreds: int, maxPreys: int, maxPreds: int):
-        '''Creates a map object to hold cells'''
+        """Creates a map object to hold cells"""
         self.width = width
         self.height = height
         self.startPreys = startPreys
@@ -33,15 +33,15 @@ class Map:
             #write history into file
 
     def kill(self):
-        '''Signals program ending and ensures accompanying files are also closed'''
+        """Signals program ending and ensures accompanying files are also closed"""
         self.file.close()
 
     def update(self):
-        '''Updates all cells in the map for the current frame'''
+        """Updates all cells in the map for the current frame"""
         pass
 
     def draw(self, screen):
-        '''Draws all cells in the map for the current frame'''
+        """Draws all cells in the map for the current frame"""
         pass
 
 class Cell:
