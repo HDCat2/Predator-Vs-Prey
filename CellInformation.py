@@ -67,8 +67,9 @@ class Cell:
 
     def move(self):
         """ Modifies position according to speed, angle and collisionModifier """
-        self.xyPos[0] += self.speed * cos(self.angle)
-        self.xyPos[1] += self.speed * sin(self.angle)
+        self.xyPos[0] += self.speed * cos(self.angle) + self.collisionModifier[0]
+        self.xyPos[1] += self.speed * sin(self.angle) + self.collisionModifier[1]
+        self.collisionModifier = [0,0]
     
     def findCollision(self, otherCell):
         """ Detect if collision is happening and modify collisionModifier.
@@ -78,12 +79,23 @@ class Cell:
         in `move()`.
         
         """
-        distance = (self.xyPos[0] - otherCell.xyPos[0])**2 + (self.xyPos[1] - otherCell.xypos[1])**2
+        v = [self.xyPos[0] - otherCell.xyPos[0], self.xyPos[1] - otherCell.xypos[1]]
+        distance = (v[0]**2 + v[1]**2)/2
 
-        if distance > (Cell.CELL_RADIUS * 2)**2:
+        if distance > Cell.CELL_RADIUS * 2:
             return
 
-        raise NotImplementedError()
+        if distance == 0:
+            self.collisionModifier[1] += Cell.MAXIMUM_SPEED
+            otherCell.collisionModifier[1] -= Cell.MAXIMUM_SPEED
+        
+        proximityFactor = 1 - distance/(Cell.CELL_RADIUS * 2)
+        v = [v[0]/distance * proximityFactor * Cell.MAXIMUM_SPEED, self.xyPos[1] - v[0]/distance * proximityFactor * Cell.MAXIMUM_SPEED]
+        self.collisionModifier[0] -= v[0]
+        self.collisionModifier[1] -= v[1]
+        otherCell.collisionModifier[0] += v[0]
+        otherCell.collisionModifier[1] += v[1]
+        return
 
     def draw(self, canvas):
         """ Draw the cell on `canvas` """
