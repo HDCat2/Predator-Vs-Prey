@@ -139,9 +139,12 @@ class Cell:
         otherCell.collisionModifier[0] += v[0]
         otherCell.collisionModifier[1] += v[1]
 
-    def draw(self, canvas):
+    def draw(self, screen):
         """ Draw the cell on `canvas` """
-        draw.circle(canvas, self.colour, self.xyPos, Cell.CELL_RADIUS, 0)
+        for ray in self.rays:
+            rayDest = (self.xyPos[0] + Cell.VIEW_DISTANCE*cos(self.angle + ray), self.xyPos[1] + Cell.VIEW_DISTANCE*sin(self.angle + ray))
+            draw.line(screen, (200, 200, 200), self.xyPos, rayDest, 1)
+        draw.circle(screen, self.colour, self.xyPos, Cell.CELL_RADIUS, 0)
         #draw outward rays
 
 
@@ -150,7 +153,7 @@ class Predator(Cell):
     MAXIMUM_ENERGY = 100
     INITIAL_ENERGY = 50
     RAY_COUNT = 15
-    RAY_GAP = 2
+    RAY_GAP = 0.06
 
     def __init__(self, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         if xyPos == None:
@@ -187,7 +190,7 @@ class Prey(Cell):
     INITIAL_ENERGY = 50
     LIFESPAN = 10
     RAY_COUNT = 15
-    RAY_GAP = 5
+    RAY_GAP = 0.2
 
     def __init__(self, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         if xyPos == None:
