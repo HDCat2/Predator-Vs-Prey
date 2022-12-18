@@ -87,6 +87,7 @@ class Cell:
         self.angularVelocity = 0
         self.collisionModifier = [0,0]
         self.generationNumber = previousGenerationNumber + 1
+        self.viewDistance = Cell.VIEW_DISTANCE
         self.lifeLength = 0
         self.type = None #0 for predator, 1 for prey
         self.colour = (0, 0, 0)
@@ -143,7 +144,7 @@ class Cell:
     def draw(self, screen):
         """ Draw the cell on `canvas` """
         for ray in self.rays:
-            rayDest = (self.xyPos[0] + Cell.VIEW_DISTANCE*cos(self.angle + ray), self.xyPos[1] + Cell.VIEW_DISTANCE*sin(self.angle + ray))
+            rayDest = (self.xyPos[0] + self.viewDistance*cos(self.angle + ray), self.xyPos[1] + self.viewDistance*sin(self.angle + ray))
             draw.line(screen, Cell.RAY_COLOUR, self.xyPos, rayDest, 1)
         draw.circle(screen, self.colour, self.xyPos, Cell.CELL_RADIUS, 0)
         #draw outward rays
@@ -155,6 +156,7 @@ class Predator(Cell):
     INITIAL_ENERGY = 50
     RAY_COUNT = 15
     RAY_GAP = 0.06
+    VIEW_DISTANCE = 100
 
     def __init__(self, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         if xyPos == None:
@@ -165,6 +167,7 @@ class Predator(Cell):
         self.type = 0
         self.colour = Cell.PREDATOR_COLOUR
         self.rays = [-Predator.RAY_GAP*Predator.RAY_COUNT//2 + Predator.RAY_GAP*i for i in range(Predator.RAY_COUNT)]
+        self.viewDistance = Predator.VIEW_DISTANCE
 
     def getVision(self):
         """ Get vision as input for neural network"""
@@ -192,6 +195,7 @@ class Prey(Cell):
     LIFESPAN = 10
     RAY_COUNT = 15
     RAY_GAP = 0.2
+    VIEW_DISTANCE = 50
 
     def __init__(self, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         if xyPos == None:
@@ -201,6 +205,7 @@ class Prey(Cell):
         self.type = 1
         self.colour = Cell.PREY_COLOUR
         self.rays = [-Prey.RAY_GAP*Prey.RAY_COUNT//2 + Prey.RAY_GAP*i for i in range(Prey.RAY_COUNT)]
+        self.viewDistance = Prey.VIEW_DISTANCE
 
     def getVision(self):
         """ Get vision as input for neural network"""

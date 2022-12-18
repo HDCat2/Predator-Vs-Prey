@@ -24,26 +24,3 @@ while running:
     display.flip()
 
 quit()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
