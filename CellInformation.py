@@ -231,6 +231,7 @@ class Predator(Cell):
         """ Get vision as input for neural network"""
         raise NotImplementedError()
 
+
     def getMove(self):
         """ Feed vision input from `getVision()` into neural network """
         raise NotImplementedError()
