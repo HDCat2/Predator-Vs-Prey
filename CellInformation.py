@@ -16,10 +16,11 @@ class Map:
         self.startPreds = startPreds
         self.maxPreys = maxPreys
         self.maxPreds = maxPreds
+        self.frameCount = 0
+        self.colour = (255, 255, 255)
 
-        self.filename = datetime.now().strftime("Predator-Vs-Prey/Histories/%Y%m%d%H%M%S.txt")
         self.timer = time()
-
+        self.filename = datetime.now().strftime("Predator-Vs-Prey/Histories/%Y%m%d%H%M%S.txt")
         self.file = open(self.filename, "x")
 
         self.preyList = []
@@ -33,25 +34,38 @@ class Map:
             self.predList.append(pred)
 
     def updateHistory(self):
-        print(self.timer, time())
         if (time() - self.timer) > Map.HISTORY_INTERVAL:
             self.timer = time()
-            self.file.write("test")
+            self.writeInformation()
             #write history into file
+
+    def writeInformation(self):
+        self.file.write("Data on frame %d" % self.frameCount)
+        self.file.write(datetime.now().strftime(" at %Y/%m/%d %H:%M:%S\n"))
+        self.file.write("test\n")
+        self.file.write("\n")
 
     def kill(self):
         """Signals program ending and ensures accompanying files are also closed"""
+        self.writeInformation()
+        self.file.write("Completed\n")
         self.file.close()
 
     def update(self):
         """Updates all cells in the map for the current frame"""
         self.updateHistory()
-        pass
+
+        #update all cells here
+
+        self.frameCount += 1
 
     def draw(self, screen):
         """Draws all cells in the map for the current frame"""
+        screen.fill(self.colour)
+
         for prey in self.preyList:
             prey.draw(screen)
+
         for pred in self.predList:
             pred.draw(screen)
 
@@ -61,7 +75,7 @@ class Cell:
     MAXIMUM_TURN_SPEED = 0.1
     DEFAULT_ANGLE = 0
     EMPTY_NETWORK = 0
-    CELL_RADIUS = 40
+    CELL_RADIUS = 5
     VIEW_DISTANCE = 100
     PREY_COLOUR = (0,255,0)
     PREDATOR_COLOUR = (255,0,0)
@@ -91,17 +105,18 @@ class Cell:
         self.xyPos[1] += self.speed * sin(self.angle) + self.collisionModifier[1]
         self.collisionModifier = [0,0]
     
-    def findCollision(self, otherCell):
+    def isColliding(self, otherCell):
         """ Detect if collision is happening and modify collisionModifier. """
         v = [self.xyPos[0] - otherCell.xyPos[0], self.xyPos[1] - otherCell.xypos[1]]
         distance = (v[0]**2 + v[1]**2)**0.5
 
         if distance > Cell.CELL_RADIUS * 2:
             return False
+
         if self.type == otherCell.type:
             self.repel(otherCell)
 
-        return
+        return True
 
     def repel(self, otherCell):
         """
@@ -128,15 +143,6 @@ class Cell:
         """ Draw the cell on `canvas` """
         draw.circle(canvas, self.colour, self.xyPos, Cell.CELL_RADIUS, 0)
         #draw outward rays
-
-
-    def canSplit(self):
-        """ Virtual method for checking if cell is able to split """
-        raise NotImplementedError()
-
-    def split(self):
-        if self.canSplit():
-            raise NotImplementedError()
 
 
 class Predator(Cell):
@@ -172,6 +178,10 @@ class Predator(Cell):
         """ Check if cell has enough energy to split """
         return self.energy >= Predator.MAXIMUM_ENERGY
 
+    def split(self):
+        if self.canSplit:
+            raise NotImplementedError()
+
 class Prey(Cell):
     MAXIMUM_ENERGY = 100
     INITIAL_ENERGY = 50
@@ -199,3 +209,7 @@ class Prey(Cell):
     def canSplit(self):
         """ Check if cell has lived long enough to split """
         return self.lifeLength > Prey.LIFESPAN
+
+    def split(self):
+        if self.canSplit:
+            raise NotImplementedError()
