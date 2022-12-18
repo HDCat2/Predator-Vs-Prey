@@ -76,6 +76,7 @@ class Cell:
     DEFAULT_ANGLE = 0
     EMPTY_NETWORK = 0
     CELL_RADIUS = 5
+    CELL_FRONT_LENGTH = 7
     VIEW_DISTANCE = 100
     PREY_COLOUR = (0,255,0)
     PREDATOR_COLOUR = (255,0,0)
@@ -147,12 +148,14 @@ class Cell:
         otherCell.collisionModifier[0] += v[0]
         otherCell.collisionModifier[1] += v[1]
 
-    def draw(self, screen):
+    def draw(self, screen, drawRays = False):
         """ Draw the cell on `canvas` """
-        for ray in self.rays:
-            rayDest = (self.xyPos[0] + self.viewDistance*cos(self.angle + ray), self.xyPos[1] + self.viewDistance*sin(self.angle + ray))
-            draw.line(screen, Cell.RAY_COLOUR, self.xyPos, rayDest, 1)
+        if drawRays:
+            for ray in self.rays:
+                rayDest = (self.xyPos[0] + self.viewDistance*cos(self.angle + ray), self.xyPos[1] + self.viewDistance*sin(self.angle + ray))
+                draw.line(screen, Cell.RAY_COLOUR, self.xyPos, rayDest, 1)
         draw.circle(screen, self.colour, self.xyPos, Cell.CELL_RADIUS, 0)
+        draw.line(screen, self.colour, self.xyPos, Cell.CELL_FRONT_LENGTH, 2)
         #draw outward rays
 
 
