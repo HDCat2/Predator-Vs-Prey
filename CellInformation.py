@@ -55,7 +55,11 @@ class Map:
         """Updates all cells in the map for the current frame"""
         self.updateHistory()
 
-        #update all cells here
+        for prey in self.preyList:
+            prey.update()
+
+        for pred in self.predList:
+            pred.update()
 
         self.frameCount += 1
 
@@ -81,7 +85,12 @@ class Cell:
     PREY_COLOUR = (0,255,0)
     PREDATOR_COLOUR = (255,0,0)
     RAY_COLOUR = (210, 210, 210)
+
     CELL_SETS = None
+    BOX_SIZE = None
+    BOX_OVERLAP = None
+    BOX_HOR_COUNT = 5
+    BOX_VER_COUNT = 5
 
     def __init__(self, map, startingNetwork = EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         self.speed = 0
@@ -97,10 +106,16 @@ class Cell:
         if self.xyPos == None:
             self.xyPos = [0, 0]
         self.rays = []
+
         if Cell.CELL_SETS == None:
-            overlap = Cell.VIEW_DISTANCE*2 + Cell.CELL_RADIUS*3 + 10
-            boxSize = 1
-            Cell.CELL_SETS = []
+            boxWidth = map.width // Cell.BOX_HOR_COUNT
+            boxHeight = map.height // Cell.BOX_VER_COUNT
+            Cell.BOX_SIZE = (boxWidth, boxHeight)
+            Cell.BOX_OVERLAP = Cell.VIEW_DISTANCE*2 + Cell.CELL_RADIUS*3 + 10
+            if Cell.BOX_OVERLAP > max(Cell.BOX_SIZE):
+                raise ValueError("Overlap larger than box size, reduce box count")
+            Cell.CELL_SETS = [[set() for j in range(Cell.BOX_VER_COUNT)] for i in range(Cell.BOX_HOR_COUNT)]
+        Cell.CELL_SETS[1][1].add(self)
 
     def turn(self):
         """ Modifies Cell angle by Cell angularVelocity """
@@ -109,9 +124,11 @@ class Cell:
 
     def move(self):
         """ Modifies position according to speed, angle and collisionModifier """
-        self.xyPos[0] += self.speed * cos(self.angle) + self.collisionModifier[0]
-        self.xyPos[1] += self.speed * sin(self.angle) + self.collisionModifier[1]
-        #update current sets its in
+        newPosX = self.xyPos[0] + self.speed * cos(self.angle) + self.collisionModifier[0]
+        newPosY = self.xyPos[1] + self.speed * sin(self.angle) + self.collisionModifier[1]
+        self.updateSets((newPosX, newPosY))
+        self.xyPos[0] = newPosX
+        self.xyPos[1] = newPosY
         self.collisionModifier = [0,0]
     
     def isColliding(self, otherCell):
@@ -126,6 +143,33 @@ class Cell:
             self.repel(otherCell)
 
         return True
+
+    def kill(self):
+        """ Remove the cell from the map """
+        for p in self.getSetIndices():
+            Cell.CELL_SETS[p[0]][p[1]].remove(self)
+
+    def getSetIndices(self, position = None):
+        """ Return set of pairs of indices for which sets the cell belongs to """
+        ret = set()
+        if position == None:
+            position = self.xyPos
+        for d in [(0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)]:
+            coord = (position[0]+Cell.BOX_OVERLAP*d[0], position[1]+Cell.BOX_OVERLAP*d[1])
+            setInd = (coord[0]//Cell.BOX_SIZE[0], coord[1]//Cell.BOX_SIZE[1])
+            ret.add(setInd)
+        return ret
+
+    def updateSets(self, xyPos2):
+        """ Takes new position and updates cell sets to match new position """
+        set1 = self.getSetIndices()
+        set2 = self.getSetIndices(xyPos2)
+        exited = set1 - set2
+        entered = set2 - set1
+        for coord in exited:
+            Cell.CELL_SETS[coord[0]][coord[1]].remove(self)
+        for coord in entered:
+            Cell.CELL_SETS[coord[0]][coord[1]].add(self)
 
     def repel(self, otherCell):
         """
@@ -148,6 +192,10 @@ class Cell:
         otherCell.collisionModifier[0] += v[0]
         otherCell.collisionModifier[1] += v[1]
 
+    def update(self):
+        self.move()
+        print(Cell.CELL_SETS)
+
     def draw(self, screen, drawRays = False):
         """ Draw the cell on `canvas` """
         if drawRays:
@@ -155,7 +203,8 @@ class Cell:
                 rayDest = (self.xyPos[0] + self.viewDistance*cos(self.angle + ray), self.xyPos[1] + self.viewDistance*sin(self.angle + ray))
                 draw.line(screen, Cell.RAY_COLOUR, self.xyPos, rayDest, 1)
         draw.circle(screen, self.colour, self.xyPos, Cell.CELL_RADIUS, 0)
-        draw.line(screen, self.colour, self.xyPos, Cell.CELL_FRONT_LENGTH, 2)
+
+        #draw.line(screen, self.colour, self.xyPos, Cell.CELL_FRONT_LENGTH, 2)
         #draw outward rays
 
 
