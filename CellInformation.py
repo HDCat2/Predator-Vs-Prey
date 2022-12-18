@@ -79,6 +79,7 @@ class Cell:
     VIEW_DISTANCE = 100
     PREY_COLOUR = (0,255,0)
     PREDATOR_COLOUR = (255,0,0)
+    RAY_COLOUR = (210, 210, 210)
 
     def __init__(self, startingNetwork = EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         self.speed = 0
@@ -143,7 +144,7 @@ class Cell:
         """ Draw the cell on `canvas` """
         for ray in self.rays:
             rayDest = (self.xyPos[0] + Cell.VIEW_DISTANCE*cos(self.angle + ray), self.xyPos[1] + Cell.VIEW_DISTANCE*sin(self.angle + ray))
-            draw.line(screen, (200, 200, 200), self.xyPos, rayDest, 1)
+            draw.line(screen, Cell.RAY_COLOUR, self.xyPos, rayDest, 1)
         draw.circle(screen, self.colour, self.xyPos, Cell.CELL_RADIUS, 0)
         #draw outward rays
 
