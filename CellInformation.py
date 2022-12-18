@@ -30,7 +30,7 @@ class Map:
 
         self.predList = []
         for i in range(self.startPreds):
-            pred = Predator(self, 0, 0, [randint(0, width), randint(0, height)])
+            pred = Predator(self, 0, 0, [randint(0, width-1), randint(0, height-1)])
             self.predList.append(pred)
 
     def updateHistory(self):
@@ -79,7 +79,7 @@ class Cell:
     MAXIMUM_TURN_SPEED = 0.1
     DEFAULT_ANGLE = 0
     EMPTY_NETWORK = 0
-    CELL_RADIUS = 5
+    CELL_RADIUS = 10
     CELL_FRONT_LENGTH = 7
     VIEW_DISTANCE = 100
     PREY_COLOUR = (0,255,0)
@@ -115,7 +115,8 @@ class Cell:
             if Cell.BOX_OVERLAP > max(Cell.BOX_SIZE):
                 raise ValueError("Overlap larger than box size, reduce box count")
             Cell.CELL_SETS = [[set() for j in range(Cell.BOX_VER_COUNT)] for i in range(Cell.BOX_HOR_COUNT)]
-        Cell.CELL_SETS[1][1].add(self)
+        setCoord = self.getCenteredSet()
+        Cell.CELL_SETS[setCoord[0]][setCoord[1]].add(self)
 
     def turn(self):
         """ Modifies Cell angle by Cell angularVelocity """
@@ -130,17 +131,25 @@ class Cell:
         self.xyPos[0] = newPosX
         self.xyPos[1] = newPosY
         self.collisionModifier = [0,0]
+
+    def getCollisions(self):
+        """ Returns a list of all cells colliding with self """
+        setCoord = self.getCenteredSet()
+        collisionList = []
+        for cell in Cell.CELL_SETS[setCoord[0]][setCoord[1]]:
+            if cell != self and self.isColliding(cell):
+                collisionList.append(cell)
+        return collisionList
     
     def isColliding(self, otherCell):
         """ Detect if collision is happening and modify collisionModifier. """
-        v = [self.xyPos[0] - otherCell.xyPos[0], self.xyPos[1] - otherCell.xypos[1]]
+        v = [self.xyPos[0] - otherCell.xyPos[0], self.xyPos[1] - otherCell.xyPos[1]]
         distance = (v[0]**2 + v[1]**2)**0.5
-
         if distance > Cell.CELL_RADIUS * 2:
             return False
 
-        if self.type == otherCell.type:
-            self.repel(otherCell)
+        #if self.type == otherCell.type:
+            #self.repel(otherCell)
 
         return True
 
@@ -156,9 +165,19 @@ class Cell:
             position = self.xyPos
         for d in [(0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)]:
             coord = (position[0]+Cell.BOX_OVERLAP*d[0], position[1]+Cell.BOX_OVERLAP*d[1])
-            setInd = (coord[0]//Cell.BOX_SIZE[0], coord[1]//Cell.BOX_SIZE[1])
+            setInd = (int(coord[0]//Cell.BOX_SIZE[0]), int(coord[1]//Cell.BOX_SIZE[1]))
             ret.add(setInd)
         return ret
+
+    def getCenteredSet(self):
+        """ Return the indices of the set the cell is most centered in """
+        sets = list(self.getSetIndices())
+        minDists = []
+        for s in sets:
+            dists = [abs(self.xyPos[0] - (s[0]*Cell.BOX_SIZE[0] - Cell.BOX_OVERLAP)), abs(self.xyPos[0] - ((s[0]+1)*Cell.BOX_SIZE[0] + Cell.BOX_OVERLAP)),
+                     abs(self.xyPos[1] - (s[1]*Cell.BOX_SIZE[1] - Cell.BOX_OVERLAP)), abs(self.xyPos[1] - ((s[1]+1)*Cell.BOX_SIZE[1] + Cell.BOX_OVERLAP))]
+            minDists.append(min(dists))
+        return sets[minDists.index(max(minDists))]
 
     def updateSets(self, xyPos2):
         """ Takes new position and updates cell sets to match new position """
@@ -177,7 +196,7 @@ class Cell:
         apply a movement on both cells directly away from each other that will be processed
         in `move()`.
         """
-        v = [self.xyPos[0] - otherCell.xyPos[0], self.xyPos[1] - otherCell.xypos[1]]
+        v = [self.xyPos[0] - otherCell.xyPos[0], self.xyPos[1] - otherCell.xyPos[1]]
         distance = (v[0] ** 2 + v[1] ** 2) ** 0.5
 
         if distance == 0:
@@ -194,7 +213,6 @@ class Cell:
 
     def update(self):
         self.move()
-        print(Cell.CELL_SETS)
 
     def draw(self, screen, drawRays = False):
         """ Draw the cell on `canvas` """
@@ -230,7 +248,6 @@ class Predator(Cell):
     def getVision(self):
         """ Get vision as input for neural network"""
         raise NotImplementedError()
-
 
     def getMove(self):
         """ Feed vision input from `getVision()` into neural network """
