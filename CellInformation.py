@@ -154,8 +154,11 @@ class Cell:
             for ray in self.rays:
                 rayDest = (self.xyPos[0] + self.viewDistance*cos(self.angle + ray), self.xyPos[1] + self.viewDistance*sin(self.angle + ray))
                 draw.line(screen, Cell.RAY_COLOUR, self.xyPos, rayDest, 1)
+        #cell body
         draw.circle(screen, self.colour, self.xyPos, Cell.CELL_RADIUS, 0)
-        draw.line(screen, self.colour, self.xyPos, Cell.CELL_FRONT_LENGTH, 2)
+        #cell face
+        draw.line(screen, self.colour, self.xyPos, 
+                [self.xyPos[0] + cos(self.angle) * Cell.CELL_FRONT_LENGTH, self.xyPos[1] + sin(self.angle) * Cell.CELL_FRONT_LENGTH], 2)
         #draw outward rays
 
 
