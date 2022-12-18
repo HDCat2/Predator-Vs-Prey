@@ -20,17 +20,17 @@ class Map:
         self.colour = (255, 255, 255)
 
         self.timer = time()
-        self.filename = datetime.now().strftime("Predator-Vs-Prey/Histories/%Y%m%d%H%M%S.txt")
+        self.filename = datetime.now().strftime("Predator-Vs-Prey/Histories/%Y-%m-%d-%H-%M-%S.txt")
         self.file = open(self.filename, "x")
 
         self.preyList = []
         for i in range(self.startPreys):
-            prey = Prey(0, 0, [randint(0, width), randint(0, height)])
+            prey = Prey(self, 0, 0, [randint(0, width), randint(0, height)])
             self.preyList.append(prey)
 
         self.predList = []
         for i in range(self.startPreds):
-            pred = Predator(0, 0, [randint(0, width), randint(0, height)])
+            pred = Predator(self, 0, 0, [randint(0, width), randint(0, height)])
             self.predList.append(pred)
 
     def updateHistory(self):
@@ -80,8 +80,9 @@ class Cell:
     PREY_COLOUR = (0,255,0)
     PREDATOR_COLOUR = (255,0,0)
     RAY_COLOUR = (210, 210, 210)
+    CELL_SETS = None
 
-    def __init__(self, startingNetwork = EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
+    def __init__(self, map, startingNetwork = EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         self.speed = 0
         self.angle = Cell.DEFAULT_ANGLE
         self.angularVelocity = 0
@@ -95,6 +96,10 @@ class Cell:
         if self.xyPos == None:
             self.xyPos = [0, 0]
         self.rays = []
+        if Cell.CELL_SETS == None:
+            overlap = Cell.VIEW_DISTANCE*2 + Cell.CELL_RADIUS*3 + 10
+            boxSize = 1
+            Cell.CELL_SETS = []
 
     def turn(self):
         """ Modifies Cell angle by Cell angularVelocity """
@@ -105,6 +110,7 @@ class Cell:
         """ Modifies position according to speed, angle and collisionModifier """
         self.xyPos[0] += self.speed * cos(self.angle) + self.collisionModifier[0]
         self.xyPos[1] += self.speed * sin(self.angle) + self.collisionModifier[1]
+        #update current sets its in
         self.collisionModifier = [0,0]
     
     def isColliding(self, otherCell):
@@ -158,10 +164,10 @@ class Predator(Cell):
     RAY_GAP = 0.06
     VIEW_DISTANCE = 100
 
-    def __init__(self, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
+    def __init__(self, map, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         if xyPos == None:
             xyPos = [0, 0]
-        super().__init__(inheritingNetwork, previousGenerationNumber, xyPos)
+        super().__init__(map, inheritingNetwork, previousGenerationNumber, xyPos)
         self.energy = Predator.INITIAL_ENERGY
         self.digestionTimer = 0
         self.type = 0
@@ -197,10 +203,10 @@ class Prey(Cell):
     RAY_GAP = 0.2
     VIEW_DISTANCE = 50
 
-    def __init__(self, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
+    def __init__(self, map, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         if xyPos == None:
             xyPos = [0, 0]
-        super().__init__(inheritingNetwork, previousGenerationNumber, xyPos)
+        super().__init__(map, inheritingNetwork, previousGenerationNumber, xyPos)
         self.energy = Prey.INITIAL_ENERGY
         self.type = 1
         self.colour = Cell.PREY_COLOUR
