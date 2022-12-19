@@ -288,7 +288,6 @@ class Cell:
         #draw.line(screen, self.colour, self.xyPos, Cell.CELL_FRONT_LENGTH, 2)
         #draw outward rays
 
-
 class Predator(Cell):
     MAXIMUM_DIGESTION_TIMER = 100
     MAXIMUM_ENERGY = 100
@@ -345,10 +344,6 @@ class Prey(Cell):
         self.rayCount = Prey.RAY_COUNT
         self.rayGap = Prey.RAY_GAP
         self.viewDistance = Prey.VIEW_DISTANCE
-
-    def getVision(self):
-        """ Get vision as input for neural network"""
-        raise NotImplementedError()
 
     def getMove(self):
         """ Feed vision input from `getVision()` into neural network """
