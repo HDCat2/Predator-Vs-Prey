@@ -3,6 +3,7 @@ from math import *
 from datetime import datetime
 from time import time
 from random import *
+import numpy as np
 import os
 
 class Map:
@@ -106,6 +107,8 @@ class Cell:
         if self.xyPos == None:
             self.xyPos = [0, 0]
         self.rays = []
+        self.rayCount = None
+        self.rayGap = None
 
         if Cell.CELL_SETS == None:
             boxWidth = map.width // Cell.BOX_HOR_COUNT
@@ -211,6 +214,66 @@ class Cell:
         otherCell.collisionModifier[0] += v[0]
         otherCell.collisionModifier[1] += v[1]
 
+    def getIntersectionLength(self, cellAngle, dist, tensor, idx):
+        """ Helper function for `getVision()`
+        Finds intersection of ray with cell given necessary parameters. Returns True if
+        an intersection is found and changes `tensor` at `idx` appropriately, False otherwise.
+        """
+        rayAngle = abs(cellAngle - (self.angle + self.rays[idx]))
+        # Check if ray intersects with circle
+        if dist * sin(rayAngle) > Cell.CELL_RADIUS:
+            return False
+
+        if rayAngle == cellAngle:
+            tensor[idx] = max(tensor[idx], (dist - Cell.CELL_RADIUS)/self.viewDistance)
+            return True
+        
+        # Use cosine law to compute length of ray from origin cell to intersection
+        disc = (2 * dist * cos(rayAngle))**2 - 4 * (dist**2 - Cell.CELL_RADIUS**2)
+        if disc < 0:
+            raise ValueError("Discriminant in getVision() is imaginary!")
+        
+        root = (2 * dist * cos(rayAngle) - disc**0.5)/2
+        if root < 0:
+            root += disc**0.5
+            if root < 0:
+                raise ValueError("Found negative value for length of intersection in getVision()")
+        
+        tensor[idx] = max(tensor[idx], root/self.viewDistance)
+        return True
+
+    def getVision(self):
+        """ Get vision as input for neural network """
+        #raise NotImplementedError()
+        inputTensor = [0 for i in range(self.rayCount)]
+        for otherCell in self.getCenteredSet():
+            dist = np.linalg.norm(otherCell.xyPos, self.xyPos)
+
+            if dist < Cell.CELL_RADIUS:
+                return [1 for i in range(self.rayCount)]
+            
+            if otherCell.type == 1 or dist >= self.viewDistance + Cell.CELL_RADIUS:
+                pass
+
+            cellAngle = atan2(self.xyPos[1] - otherCell.xyPos[1], self.xyPos[0] - otherCell.xyPos[0])
+
+            rayLowerIndex = (cellAngle - self.angle) // self.rayGap + self.rayCount // 2
+            rayUpperIndex = rayLowerIndex + 1
+
+            while rayLowerIndex >= 0:
+                ret = self.getIntersectionLength(cellAngle, dist, inputTensor, rayLowerIndex)
+                if ret:
+                    rayLowerIndex -= 1
+                else:
+                    break
+            
+            while rayUpperIndex < self.rayCount:
+                ret = self.getIntersectionLength(cellAngle, dist, inputTensor, rayUpperIndex)
+                if ret:
+                    rayUpperIndex += 1
+                else:
+                    break
+
     def update(self):
         self.move()
 
@@ -243,11 +306,9 @@ class Predator(Cell):
         self.type = 0
         self.colour = Cell.PREDATOR_COLOUR
         self.rays = [-Predator.RAY_GAP*Predator.RAY_COUNT//2 + Predator.RAY_GAP*i for i in range(Predator.RAY_COUNT)]
+        self.rayCount = Predator.RAY_COUNT
+        self.rayGap = Predator.RAY_GAP
         self.viewDistance = Predator.VIEW_DISTANCE
-
-    def getVision(self):
-        """ Get vision as input for neural network"""
-        raise NotImplementedError()
 
     def getMove(self):
         """ Feed vision input from `getVision()` into neural network """
@@ -281,6 +342,8 @@ class Prey(Cell):
         self.type = 1
         self.colour = Cell.PREY_COLOUR
         self.rays = [-Prey.RAY_GAP*Prey.RAY_COUNT//2 + Prey.RAY_GAP*i for i in range(Prey.RAY_COUNT)]
+        self.rayCount = Prey.RAY_COUNT
+        self.rayGap = Prey.RAY_GAP
         self.viewDistance = Prey.VIEW_DISTANCE
 
     def getVision(self):
