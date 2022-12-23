@@ -26,7 +26,7 @@ class Map:
 
         self.preyList = []
         for i in range(self.startPreys):
-            prey = Prey(self, 0, 0, [randint(0, width), randint(0, height)])
+            prey = Prey(self, 0, 0, [randint(0, width-1), randint(0, height-1)])
             self.preyList.append(prey)
 
         self.predList = []
@@ -93,7 +93,7 @@ class Cell:
     BOX_HOR_COUNT = 5
     BOX_VER_COUNT = 5
 
-    def __init__(self, map, startingNetwork = EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
+    def __init__(self, cellMap, startingNetwork = EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         self.speed = 0
         self.angle = Cell.DEFAULT_ANGLE
         self.angularVelocity = 0
@@ -104,21 +104,22 @@ class Cell:
         self.type = None #0 for predator, 1 for prey
         self.colour = (0, 0, 0)
         self.xyPos = xyPos
-        if self.xyPos == None:
-            self.xyPos = [0, 0]
+        if not self.xyPos:
+            self.xyPos = [0.0, 0.0]
         self.rays = []
         self.rayCount = None
         self.rayGap = None
+        self.map = cellMap
 
         if Cell.CELL_SETS == None:
-            boxWidth = map.width // Cell.BOX_HOR_COUNT
-            boxHeight = map.height // Cell.BOX_VER_COUNT
+            boxWidth = self.map.width // Cell.BOX_HOR_COUNT
+            boxHeight = self.map.height // Cell.BOX_VER_COUNT
             Cell.BOX_SIZE = (boxWidth, boxHeight)
             Cell.BOX_OVERLAP = Cell.VIEW_DISTANCE*2 + Cell.CELL_RADIUS*3 + 10
             if Cell.BOX_OVERLAP > max(Cell.BOX_SIZE):
                 raise ValueError("Overlap larger than box size, reduce box count")
             Cell.CELL_SETS = [[set() for j in range(Cell.BOX_VER_COUNT)] for i in range(Cell.BOX_HOR_COUNT)]
-        setCoord = self.getCenteredSet()
+        setCoord = self.getSetIndex()
         Cell.CELL_SETS[setCoord[0]][setCoord[1]].add(self)
 
     def turn(self):
@@ -131,22 +132,39 @@ class Cell:
         newPosX = self.xyPos[0] + self.speed * cos(self.angle) + self.collisionModifier[0]
         newPosY = self.xyPos[1] + self.speed * sin(self.angle) + self.collisionModifier[1]
         self.updateSets((newPosX, newPosY))
-        self.xyPos[0] = newPosX
-        self.xyPos[1] = newPosY
+        self.xyPos[0] = newPosX % self.map.width
+        self.xyPos[1] = newPosY % self.map.height
         self.collisionModifier = [0,0]
 
     def getCollisions(self):
         """ Returns a list of all cells colliding with self """
-        setCoord = self.getCenteredSet()
+        setCoord = self.getSetIndex()
         collisionList = []
         for cell in Cell.CELL_SETS[setCoord[0]][setCoord[1]]:
             if cell != self and self.isColliding(cell):
                 collisionList.append(cell)
         return collisionList
+
+    def wrapCoords(self, coords):
+        x, y = coords
+        if x < self.map.width//2:
+            if abs(self.xyPos[0] - x) < abs(self.xyPos[0] - (x + self.map.width)):
+                x = x + self.map.width
+        else:
+            if abs(self.xyPos[0] - x) < abs(self.xyPos[0] - (x - self.map.width)):
+                x = x - self.map.width
+        if y < self.map.height//2:
+            if abs(self.xyPos[1] - y) < abs(self.xyPos[1] - (y + self.map.height)):
+                y = y + self.map.height
+        else:
+            if abs(self.xyPos[1] - y) < abs(self.xyPos[1] - (y - self.map.height)):
+                y = y - self.map.height
+        return (x, y)
     
     def isColliding(self, otherCell):
         """ Detect if collision is happening and modify collisionModifier. """
-        v = [self.xyPos[0] - otherCell.xyPos[0], self.xyPos[1] - otherCell.xyPos[1]]
+        cellx, celly = self.wrapCoords(otherCell.xyPos)
+        v = [self.xyPos[0] - cellx, self.xyPos[1] - celly]
         distance = (v[0]**2 + v[1]**2)**0.5
         if distance > Cell.CELL_RADIUS * 2:
             return False
@@ -167,20 +185,16 @@ class Cell:
         if position == None:
             position = self.xyPos
         for d in [(0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)]:
-            coord = (position[0]+Cell.BOX_OVERLAP*d[0], position[1]+Cell.BOX_OVERLAP*d[1])
-            setInd = (int(coord[0]//Cell.BOX_SIZE[0]), int(coord[1]//Cell.BOX_SIZE[1]))
+            coord = ((position[0]+Cell.BOX_OVERLAP*d[0]) % self.map.width, (position[1]+Cell.BOX_OVERLAP*d[1]) % self.map.height)
+            setInd = self.getSetIndex(coord)
             ret.add(setInd)
         return ret
 
-    def getCenteredSet(self):
+    def getSetIndex(self, coord = None):
         """ Return the indices of the set the cell is most centered in """
-        sets = list(self.getSetIndices())
-        minDists = []
-        for s in sets:
-            dists = [abs(self.xyPos[0] - (s[0]*Cell.BOX_SIZE[0] - Cell.BOX_OVERLAP)), abs(self.xyPos[0] - ((s[0]+1)*Cell.BOX_SIZE[0] + Cell.BOX_OVERLAP)),
-                     abs(self.xyPos[1] - (s[1]*Cell.BOX_SIZE[1] - Cell.BOX_OVERLAP)), abs(self.xyPos[1] - ((s[1]+1)*Cell.BOX_SIZE[1] + Cell.BOX_OVERLAP))]
-            minDists.append(min(dists))
-        return sets[minDists.index(max(minDists))]
+        if not coord:
+            coord = self.xyPos
+        return (coord[0]//Cell.BOX_SIZE[0], coord[1]//Cell.BOX_SIZE[1])
 
     def updateSets(self, xyPos2):
         """ Takes new position and updates cell sets to match new position """
@@ -296,10 +310,10 @@ class Predator(Cell):
     RAY_GAP = 0.06
     VIEW_DISTANCE = 100
 
-    def __init__(self, map, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
+    def __init__(self, cellMap, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         if xyPos == None:
             xyPos = [0, 0]
-        super().__init__(map, inheritingNetwork, previousGenerationNumber, xyPos)
+        super().__init__(cellMap, inheritingNetwork, previousGenerationNumber, xyPos)
         self.energy = Predator.INITIAL_ENERGY
         self.digestionTimer = 0
         self.type = 0
@@ -333,10 +347,10 @@ class Prey(Cell):
     RAY_GAP = 0.2
     VIEW_DISTANCE = 50
 
-    def __init__(self, map, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
+    def __init__(self, cellMap, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         if xyPos == None:
             xyPos = [0, 0]
-        super().__init__(map, inheritingNetwork, previousGenerationNumber, xyPos)
+        super().__init__(cellMap, inheritingNetwork, previousGenerationNumber, xyPos)
         self.energy = Prey.INITIAL_ENERGY
         self.type = 1
         self.colour = Cell.PREY_COLOUR
