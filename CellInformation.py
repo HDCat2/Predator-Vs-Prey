@@ -260,8 +260,9 @@ class Cell:
         """ Get vision as input for neural network """
         #raise NotImplementedError()
         inputTensor = [0 for i in range(self.rayCount)]
-        for otherCell in self.getCenteredSet():
-            dist = np.linalg.norm(otherCell.xyPos, self.xyPos)
+        for otherCell in Cell.CELL_SETS[self.getSetIndex()[0]][self.getSetIndex()[1]]:
+            otherCellCoords = self.wrapCoords(otherCell.xyPos)
+            dist = np.linalg.norm(otherCellCoords, self.xyPos)
 
             if dist < Cell.CELL_RADIUS:
                 return [1 for i in range(self.rayCount)]
@@ -269,7 +270,7 @@ class Cell:
             if otherCell.type == 1 or dist >= self.viewDistance + Cell.CELL_RADIUS:
                 pass
 
-            cellAngle = atan2(self.xyPos[1] - otherCell.xyPos[1], self.xyPos[0] - otherCell.xyPos[0])
+            cellAngle = atan2(self.xyPos[1] - otherCellCoords[1], self.xyPos[0] - otherCellCoords[0])
 
             rayLowerIndex = (cellAngle - self.angle) // self.rayGap + self.rayCount // 2
             rayUpperIndex = rayLowerIndex + 1
