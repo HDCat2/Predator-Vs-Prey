@@ -228,19 +228,18 @@ class Cell:
         otherCell.collisionModifier[0] += v[0]
         otherCell.collisionModifier[1] += v[1]
 
-    def getIntersectionLength(self, cellAngle, dist, tensor, idx):
+    def getIntersectionLength(self, cellAngle, dist):
         """ Helper function for `getVision()`
-        Finds intersection of ray with cell given necessary parameters. Returns True if
-        an intersection is found and changes `tensor` at `idx` appropriately, False otherwise.
+        Finds length of intersection of ray with cell given necessary parameters. Returns
+        weight for neural network between 0 and 1 (0 if no intersection)
         """
         rayAngle = abs(cellAngle - (self.angle + self.rays[idx]))
         # Check if ray intersects with circle
         if dist * sin(rayAngle) > Cell.CELL_RADIUS:
-            return False
+            return 0
 
         if rayAngle == cellAngle:
-            tensor[idx] = max(tensor[idx], (dist - Cell.CELL_RADIUS)/self.viewDistance)
-            return True
+            return (dist - Cell.CELL_RADIUS)/self.viewDistance
         
         # Use cosine law to compute length of ray from origin cell to intersection
         disc = (2 * dist * cos(rayAngle))**2 - 4 * (dist**2 - Cell.CELL_RADIUS**2)
@@ -253,41 +252,50 @@ class Cell:
             if root < 0:
                 raise ValueError("Found negative value for length of intersection in getVision()")
         
-        tensor[idx] = max(tensor[idx], root/self.viewDistance)
-        return True
+        return root/self.viewDistance
+
+    def getVisionOfCell(self, otherCell):
+        """ Get vision of single cell """
+        outputTensor = [0 for i in range(self.rayCount)]
+        otherCellCoords = self.wrapCoords(otherCell.xyPos)
+        dist = np.linalg.norm(otherCellCoords, self.xyPos)
+
+        if dist < Cell.CELL_RADIUS:
+            return [1 for i in range(self.rayCount)]
+        
+        if otherCell.type == 1 or dist >= self.viewDistance + Cell.CELL_RADIUS:
+            return outputTensor
+
+        cellAngle = atan2(self.xyPos[1] - otherCellCoords[1], self.xyPos[0] - otherCellCoords[0])
+
+        rayLowerIndex = (cellAngle - self.angle) // self.rayGap + self.rayCount // 2
+        rayUpperIndex = rayLowerIndex + 1
+
+        while rayLowerIndex >= 0:
+            outputTensor[rayLowerIndex] = self.getIntersectionLength(cellAngle, dist)
+            if outputTensor[rayLowerIndex]:
+                rayLowerIndex -= 1
+            else:
+                break
+        
+        while rayUpperIndex < self.rayCount:
+            outputTensor[rayUpperIndex] = self.getIntersectionLength(cellAngle, dist)
+            if outputTensor[rayUpperIndex]:
+                rayUpperIndex += 1
+            else:
+                break
+        
+        return outputTensor
 
     def getVision(self):
-        """ Get vision as input for neural network """
+        """ Get vision of all cells as input for neural network """
         #raise NotImplementedError()
         inputTensor = [0 for i in range(self.rayCount)]
         for otherCell in Cell.CELL_SETS[self.getSetIndex()[0]][self.getSetIndex()[1]]:
-            otherCellCoords = self.wrapCoords(otherCell.xyPos)
-            dist = np.linalg.norm(otherCellCoords, self.xyPos)
-
-            if dist < Cell.CELL_RADIUS:
-                return [1 for i in range(self.rayCount)]
-            
-            if otherCell.type == 1 or dist >= self.viewDistance + Cell.CELL_RADIUS:
-                pass
-
-            cellAngle = atan2(self.xyPos[1] - otherCellCoords[1], self.xyPos[0] - otherCellCoords[0])
-
-            rayLowerIndex = (cellAngle - self.angle) // self.rayGap + self.rayCount // 2
-            rayUpperIndex = rayLowerIndex + 1
-
-            while rayLowerIndex >= 0:
-                ret = self.getIntersectionLength(cellAngle, dist, inputTensor, rayLowerIndex)
-                if ret:
-                    rayLowerIndex -= 1
-                else:
-                    break
-            
-            while rayUpperIndex < self.rayCount:
-                ret = self.getIntersectionLength(cellAngle, dist, inputTensor, rayUpperIndex)
-                if ret:
-                    rayUpperIndex += 1
-                else:
-                    break
+            otherCellVision = self.getVisionOfCell(otherCell)
+            inputTensor = [max(inputTensor[i], otherCellVision[i]) for i in range(self.rayCount)]
+        
+        return inputTensor
 
     def update(self):
         self.move()
