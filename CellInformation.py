@@ -9,7 +9,7 @@ import os
 class Map:
     HISTORY_INTERVAL = 2
 
-    def __init__(self, width: int, height: int, startPreys: int, startPreds: int, maxPreys: int, maxPreds: int):
+    def __init__(self, width: int, height: int, startPreys: int, startPreds: int, maxPreys: int, maxPreds: int, doLogging: bool):
         """Creates a map object to hold cells"""
         self.width = width
         self.height = height
@@ -19,10 +19,12 @@ class Map:
         self.maxPreds = maxPreds
         self.frameCount = 0
         self.colour = (255, 255, 255)
-
         self.timer = time()
-        self.filename = datetime.now().strftime("Predator-Vs-Prey/Histories/%Y-%m-%d-%H-%M-%S.txt")
-        self.file = open(self.filename, "x")
+        self.doLogs = doLogging
+
+        if self.doLogs:
+            self.filename = datetime.now().strftime("Predator-Vs-Prey/Histories/%Y-%m-%d-%H-%M-%S.txt")
+            self.file = open(self.filename, "x")
 
         self.preyList = []
         for i in range(self.startPreys):
@@ -37,10 +39,14 @@ class Map:
     def updateHistory(self):
         if (time() - self.timer) > Map.HISTORY_INTERVAL:
             self.timer = time()
-            self.writeInformation()
+            if self.doLogs:
+                self.writeInformation()
             #write history into file
 
     def writeInformation(self):
+        if not self.doLogs:
+            raise AssertionError("Logging is turned off in this instance!")
+        
         self.file.write("Data on frame %d" % self.frameCount)
         self.file.write(datetime.now().strftime(" at %Y/%m/%d %H:%M:%S\n"))
         self.file.write("test\n")
@@ -228,12 +234,13 @@ class Cell:
         otherCell.collisionModifier[0] += v[0]
         otherCell.collisionModifier[1] += v[1]
 
-    def getIntersectionLength(self, cellAngle, dist):
+    def getIntersectionLength(self, cellAngle, dist, rayIdx):
         """ Helper function for `getVision()`
         Finds length of intersection of ray with cell given necessary parameters. Returns
         weight for neural network between 0 and 1 (0 if no intersection)
+        Ray assumed to originate from self, and angle is calculated using cellAngle and rayIdx
         """
-        rayAngle = abs(cellAngle - (self.angle + self.rays[idx]))
+        rayAngle = abs(cellAngle - (self.angle + self.rays[rayIdx]))
         # Check if ray intersects with circle
         if dist * sin(rayAngle) > Cell.CELL_RADIUS:
             return 0
@@ -255,15 +262,20 @@ class Cell:
         return root/self.viewDistance
 
     def getVisionOfCell(self, otherCell):
-        """ Get vision of single cell """
+        """ Get vision of other cell
+        Finds lengths of vision ray intersections originating from self and going to otherCell
+        Returns list corresponding to neural net weights
+        This is different from getVision as this method behaves as if only self and otherCell exist
+        on the map
+        """
         outputTensor = [0 for i in range(self.rayCount)]
         otherCellCoords = self.wrapCoords(otherCell.xyPos)
-        dist = np.linalg.norm(otherCellCoords, self.xyPos)
+        dist = np.linalg.norm(np.subtract(otherCellCoords, self.xyPos))
 
         if dist < Cell.CELL_RADIUS:
             return [1 for i in range(self.rayCount)]
         
-        if otherCell.type == 1 or dist >= self.viewDistance + Cell.CELL_RADIUS:
+        if otherCell.type == self.type or dist >= self.viewDistance + Cell.CELL_RADIUS:
             return outputTensor
 
         cellAngle = atan2(self.xyPos[1] - otherCellCoords[1], self.xyPos[0] - otherCellCoords[0])
@@ -272,14 +284,14 @@ class Cell:
         rayUpperIndex = rayLowerIndex + 1
 
         while rayLowerIndex >= 0:
-            outputTensor[rayLowerIndex] = self.getIntersectionLength(cellAngle, dist)
+            outputTensor[rayLowerIndex] = self.getIntersectionLength(cellAngle, dist, rayLowerIndex)
             if outputTensor[rayLowerIndex]:
                 rayLowerIndex -= 1
             else:
                 break
         
         while rayUpperIndex < self.rayCount:
-            outputTensor[rayUpperIndex] = self.getIntersectionLength(cellAngle, dist)
+            outputTensor[rayUpperIndex] = self.getIntersectionLength(cellAngle, dist, rayUpperIndex)
             if outputTensor[rayUpperIndex]:
                 rayUpperIndex += 1
             else:

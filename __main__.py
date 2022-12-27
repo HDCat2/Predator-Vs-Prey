@@ -7,7 +7,7 @@ WIDTH, HEIGHT = 1280, 720
 
 screen = display.set_mode((WIDTH, HEIGHT))
 
-map = Map(WIDTH, HEIGHT, 10, 10, 100, 100)
+map = Map(WIDTH, HEIGHT, 10, 10, 100, 100, True)
 
 running = True
 
