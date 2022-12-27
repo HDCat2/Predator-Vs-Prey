@@ -75,10 +75,10 @@ class Map:
         screen.fill(self.colour)
 
         for prey in self.preyList:
-            prey.draw(screen)
+            prey.draw(screen, True)
 
         for pred in self.predList:
-            pred.draw(screen)
+            pred.draw(screen, True)
 
 
 class Cell:
@@ -152,18 +152,19 @@ class Cell:
         return collisionList
 
     def wrapCoords(self, coords):
+        """ Takes a set of coordinates, and if within the same square as self (in wrapped map), returns coords if they were near self """
         x, y = coords
         if x < self.map.width//2:
-            if abs(self.xyPos[0] - x) < abs(self.xyPos[0] - (x + self.map.width)):
+            if abs(self.xyPos[0] - x) > abs(self.xyPos[0] - (x + self.map.width)):
                 x = x + self.map.width
         else:
-            if abs(self.xyPos[0] - x) < abs(self.xyPos[0] - (x - self.map.width)):
+            if abs(self.xyPos[0] - x) > abs(self.xyPos[0] - (x - self.map.width)):
                 x = x - self.map.width
         if y < self.map.height//2:
-            if abs(self.xyPos[1] - y) < abs(self.xyPos[1] - (y + self.map.height)):
+            if abs(self.xyPos[1] - y) > abs(self.xyPos[1] - (y + self.map.height)):
                 y = y + self.map.height
         else:
-            if abs(self.xyPos[1] - y) < abs(self.xyPos[1] - (y - self.map.height)):
+            if abs(self.xyPos[1] - y) > abs(self.xyPos[1] - (y - self.map.height)):
                 y = y - self.map.height
         return (x, y)
     
