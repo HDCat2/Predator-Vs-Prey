@@ -4,6 +4,7 @@ from datetime import datetime
 from time import time
 from random import *
 import numpy as np
+import CellUtil as cu
 import os
 
 class Map:
@@ -235,30 +236,30 @@ class Cell:
         otherCell.collisionModifier[0] += v[0]
         otherCell.collisionModifier[1] += v[1]
 
-    def getIntersectionLength(self, cellAngle, dist, rayIdx):
+    def getIntersectionLength(self, cellAngle, dist, rayIdx, otherCell):
         """ Helper function for `getVision()`
         Finds length of intersection of ray with cell given necessary parameters. Returns
         weight for neural network between 0 and 1 (0 if no intersection)
         Ray assumed to originate from self, and angle is calculated using cellAngle and rayIdx
         """
-        rayAngle = abs(cellAngle - (self.angle + self.rays[rayIdx]))
+
+        rayAngle = self.angle + self.rays[rayIdx]
         # Check if ray intersects with circle
-        if dist * sin(rayAngle) > Cell.CELL_RADIUS:
+        if cu.minDistanceOfRayFromPoint(self.xyPos, [cos(rayAngle), sin(rayAngle)], otherCell.xyPos) > Cell.CELL_RADIUS:
             return 0
 
-        if rayAngle == cellAngle:
+        adjustedRayAngle = abs(cellAngle - rayAngle) # angle in triangle that we will try to compute intersection length with
+        if adjustedRayAngle == cellAngle:
             return (dist - Cell.CELL_RADIUS)/self.viewDistance
         
         # Use cosine law to compute length of ray from origin cell to intersection
-        disc = (2 * dist * cos(rayAngle))**2 - 4 * (dist**2 - Cell.CELL_RADIUS**2)
+        disc = (2 * dist * cos(adjustedRayAngle))**2 - 4 * (dist**2 - Cell.CELL_RADIUS**2)
         if disc < 0:
-            raise ValueError("Discriminant in getVision() is imaginary!")
+            raise ValueError("Discriminant in getIntersectionLength() is negative: (%f)^2 - 4(1)(%f) = %f, computed with distance %f and ray angle %f" % (2 * dist * cos(adjustedRayAngle), dist**2 - Cell.CELL_RADIUS**2, disc, dist, adjustedRayAngle))
         
-        root = (2 * dist * cos(rayAngle) - disc**0.5)/2
+        root = (2 * dist * cos(adjustedRayAngle) - disc**0.5)/2
         if root < 0:
-            root += disc**0.5
-            if root < 0:
-                raise ValueError("Found negative value for length of intersection in getVision()")
+            raise ValueError("Found negative value for length of intersection in getVision()")
         
         return root/self.viewDistance
 
@@ -273,30 +274,37 @@ class Cell:
         otherCellCoords = self.wrapCoords(otherCell.xyPos)
         dist = np.linalg.norm(np.subtract(otherCellCoords, self.xyPos))
 
+        # Check if the center of the cell is inside the other cell
         if dist < Cell.CELL_RADIUS:
             return [1 for i in range(self.rayCount)]
         
+        # Check if cell is out of range
         if otherCell.type == self.type or dist >= self.viewDistance + Cell.CELL_RADIUS:
             return outputTensor
 
-        cellAngle = atan2(self.xyPos[1] - otherCellCoords[1], self.xyPos[0] - otherCellCoords[0])
+        cellAngle = atan2(otherCellCoords[1] - self.xyPos[1], otherCellCoords[0] - self.xyPos[0])
 
-        rayLowerIndex = (cellAngle - self.angle) // self.rayGap + self.rayCount // 2
+        # Attempt to find 2 adjacent rays that hit `otherCell`
+        rayLowerIndex = int((cellAngle - self.angle) // self.rayGap + self.rayCount // 2)
         rayUpperIndex = rayLowerIndex + 1
-
-        while rayLowerIndex >= 0:
-            outputTensor[rayLowerIndex] = self.getIntersectionLength(cellAngle, dist, rayLowerIndex)
-            if outputTensor[rayLowerIndex]:
-                rayLowerIndex -= 1
-            else:
-                break
         
-        while rayUpperIndex < self.rayCount:
-            outputTensor[rayUpperIndex] = self.getIntersectionLength(cellAngle, dist, rayUpperIndex)
-            if outputTensor[rayUpperIndex]:
-                rayUpperIndex += 1
-            else:
-                break
+        # Decrease rayLowerIndex until we stop finding rays that intersect
+        if 0 <= rayLowerIndex < self.rayCount:
+            while rayLowerIndex >= 0:
+                outputTensor[rayLowerIndex] = self.getIntersectionLength(cellAngle, dist, rayLowerIndex, otherCell)
+                if outputTensor[rayLowerIndex]:
+                    rayLowerIndex -= 1
+                else:
+                    break
+        
+        # Increase rayUpperIndex until we stop finding rays that intersect
+        if 0 <= rayUpperIndex < self.rayCount:
+            while rayUpperIndex < self.rayCount:
+                outputTensor[rayUpperIndex] = self.getIntersectionLength(cellAngle, dist, rayUpperIndex, otherCell)
+                if outputTensor[rayUpperIndex]:
+                    rayUpperIndex += 1
+                else:
+                    break
         
         return outputTensor
 
@@ -340,7 +348,7 @@ class Predator(Cell):
         self.digestionTimer = 0
         self.type = 0
         self.colour = Cell.PREDATOR_COLOUR
-        self.rays = [-Predator.RAY_GAP*Predator.RAY_COUNT//2 + Predator.RAY_GAP*i for i in range(Predator.RAY_COUNT)]
+        self.rays = [-Predator.RAY_GAP*(Predator.RAY_COUNT//2) + Predator.RAY_GAP*i for i in range(Predator.RAY_COUNT)]
         self.rayCount = Predator.RAY_COUNT
         self.rayGap = Predator.RAY_GAP
         self.viewDistance = Predator.VIEW_DISTANCE
@@ -376,7 +384,7 @@ class Prey(Cell):
         self.energy = Prey.INITIAL_ENERGY
         self.type = 1
         self.colour = Cell.PREY_COLOUR
-        self.rays = [-Prey.RAY_GAP*Prey.RAY_COUNT//2 + Prey.RAY_GAP*i for i in range(Prey.RAY_COUNT)]
+        self.rays = [-Prey.RAY_GAP*(Prey.RAY_COUNT//2) + Prey.RAY_GAP*i for i in range(Prey.RAY_COUNT)]
         self.rayCount = Prey.RAY_COUNT
         self.rayGap = Prey.RAY_GAP
         self.viewDistance = Prey.VIEW_DISTANCE
