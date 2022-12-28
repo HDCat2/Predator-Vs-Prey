@@ -44,7 +44,7 @@ def test_predator_vision_cell_above():
     cell1.angle = math.pi/2
 
     cell1Vision = cell1.getVisionOfCell(cell2)
-    almostCorrectAns = [0, 0, 0, 0, 0, 0, 0.9181735574422157, 0.9, 0.9181735574422157, 0, 0, 0, 0, 0, 0]
+    almostCorrectAns = [0, 0, 0, 0, 0, 0, 0.08182644255778426, 0.1, 0.08182644255778426, 0, 0, 0, 0, 0, 0]
     assert(np.linalg.norm(np.subtract(cell1Vision, almostCorrectAns)) < 0.00001)
 
 
