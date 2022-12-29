@@ -55,9 +55,11 @@ class Map:
 
     def kill(self):
         """Signals program ending and ensures accompanying files are also closed"""
-        self.writeInformation()
-        self.file.write("Completed\n")
-        self.file.close()
+        if self.doLogs:
+            self.writeInformation()
+            self.file.write("Completed\n")
+            self.file.close()
+        Cell.CELL_SETS = None
 
     def update(self):
         """Updates all cells in the map for the current frame"""
@@ -119,15 +121,18 @@ class Cell:
         self.map = cellMap
 
         if Cell.CELL_SETS == None:
-            boxWidth = self.map.width // Cell.BOX_HOR_COUNT
-            boxHeight = self.map.height // Cell.BOX_VER_COUNT
+            Cell.BOX_HOR_COUNT = self.map.width//(Cell.CELL_RADIUS * 4 + Cell.VIEW_DISTANCE * 2+5)
+            Cell.BOX_VER_COUNT = self.map.height//(Cell.CELL_RADIUS * 4 + Cell.VIEW_DISTANCE * 2+5)
+            boxWidth = self.map.width / Cell.BOX_HOR_COUNT
+            boxHeight = self.map.height / Cell.BOX_VER_COUNT
             Cell.BOX_SIZE = (boxWidth, boxHeight)
-            Cell.BOX_OVERLAP = Cell.VIEW_DISTANCE*2 + Cell.CELL_RADIUS*3 + 10
-            if Cell.BOX_OVERLAP > max(Cell.BOX_SIZE):
+            Cell.BOX_OVERLAP = Cell.VIEW_DISTANCE + Cell.CELL_RADIUS*2 + 1
+            if Cell.BOX_OVERLAP >= min(Cell.BOX_SIZE)//2:
                 raise ValueError("Overlap larger than box size, reduce box count")
             Cell.CELL_SETS = [[set() for j in range(Cell.BOX_VER_COUNT)] for i in range(Cell.BOX_HOR_COUNT)]
-        setCoord = self.getSetIndex()
-        Cell.CELL_SETS[setCoord[0]][setCoord[1]].add(self)
+        setCoords = self.getSetIndices()
+        for coord in setCoords:
+            Cell.CELL_SETS[coord[0]][coord[1]].add(self)
 
     def turn(self):
         """ Modifies Cell angle by Cell angularVelocity """
@@ -192,17 +197,17 @@ class Cell:
         ret = set()
         if position == None:
             position = self.xyPos
-        for d in [(0, 0), (0, 1), (1, 0), (0, -1), (-1, 0)]:
+        for d in [(0, 0), (0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (-1, -1)]:
             coord = ((position[0]+Cell.BOX_OVERLAP*d[0]) % self.map.width, (position[1]+Cell.BOX_OVERLAP*d[1]) % self.map.height)
             setInd = self.getSetIndex(coord)
             ret.add(setInd)
         return ret
 
     def getSetIndex(self, coord = None):
-        """ Return the indices of the set the cell is most centered in """
+        """ Return the indices of the set the cell is in, not including the overlaps """
         if not coord:
             coord = self.xyPos
-        return (coord[0]//Cell.BOX_SIZE[0], coord[1]//Cell.BOX_SIZE[1])
+        return (int(coord[0]//Cell.BOX_SIZE[0]), int(coord[1]//Cell.BOX_SIZE[1]))
 
     def updateSets(self, xyPos2):
         """ Takes new position and updates cell sets to match new position """
