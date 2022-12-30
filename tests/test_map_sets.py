@@ -6,11 +6,7 @@ parentDirectory = os.path.dirname(currentDirectory)
 
 sys.path.append(parentDirectory)
 
-import CellAI as cai
 import CellInformation as ci
-import CellUtil as cu
-import math
-import numpy as np
 
 def test_map_set_initialization():
     dummyMap1 = ci.Map(400, 300, 0, 0, 1, 1, False)
@@ -61,9 +57,9 @@ def test_wrap_coords():
     cell13 = ci.Cell(dummyMap1, None, -1, [600, 400])
 
     assert(cell11.wrapCoords((1210, 200)) == (-70, 200))
-    assert (cell11.wrapCoords((1210, 700)) == (-70, -20))
-    assert (cell12.wrapCoords((5, 6)) == (1285, 726))
-    assert (cell13.wrapCoords((550, 600)) == (550, 600))
+    assert(cell11.wrapCoords((1210, 700)) == (-70, -20))
+    assert(cell12.wrapCoords((5, 6)) == (1285, 726))
+    assert(cell13.wrapCoords((550, 600)) == (550, 600))
 
     dummyMap1.kill()
 
