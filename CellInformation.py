@@ -1,8 +1,8 @@
-from pygame import *
-from math import *
+import pygame as pyg
+import math
 from datetime import datetime
 from time import time
-from random import *
+import random as rdm
 import numpy as np
 import CellUtil as cu
 import os
@@ -29,12 +29,12 @@ class Map:
 
         self.preyList = []
         for i in range(self.startPreys):
-            prey = Prey(self, 0, 0, [randint(0, width-1), randint(0, height-1)])
+            prey = Prey(self, 0, 0, [rdm.randint(0, width-1), rdm.randint(0, height-1)])
             self.preyList.append(prey)
 
         self.predList = []
         for i in range(self.startPreds):
-            pred = Predator(self, 0, 0, [randint(0, width-1), randint(0, height-1)])
+            pred = Predator(self, 0, 0, [rdm.randint(0, width-1), rdm.randint(0, height-1)])
             self.predList.append(pred)
 
     def updateHistory(self):
@@ -137,12 +137,12 @@ class Cell:
     def turn(self):
         """ Modifies Cell angle by Cell angularVelocity """
         self.angle += self.angularVelocity
-        self.angle %= 2 * pi
+        self.angle %= 2 * math.pi
 
     def move(self):
         """ Modifies position according to speed, angle and collisionModifier """
-        newPosX = self.xyPos[0] + self.speed * cos(self.angle) + self.collisionModifier[0]
-        newPosY = self.xyPos[1] + self.speed * sin(self.angle) + self.collisionModifier[1]
+        newPosX = self.xyPos[0] + self.speed * math.cos(self.angle) + self.collisionModifier[0]
+        newPosY = self.xyPos[1] + self.speed * math.sin(self.angle) + self.collisionModifier[1]
         self.updateSets((newPosX, newPosY))
         self.xyPos[0] = newPosX % self.map.width
         self.xyPos[1] = newPosY % self.map.height
@@ -250,7 +250,7 @@ class Cell:
 
         rayAngle = self.angle + self.rays[rayIdx]
         # Check if ray intersects with circle
-        if cu.minDistanceOfRayFromPoint(self.xyPos, [cos(rayAngle), sin(rayAngle)], otherCell.xyPos) > Cell.CELL_RADIUS:
+        if cu.minDistanceOfRayFromPoint(self.xyPos, [math.cos(rayAngle), math.sin(rayAngle)], otherCell.xyPos) > Cell.CELL_RADIUS:
             return 0
 
         adjustedRayAngle = abs(cellAngle - rayAngle) # angle in triangle that we will try to compute intersection length with
@@ -258,11 +258,11 @@ class Cell:
             return 1 - (dist - Cell.CELL_RADIUS)/self.viewDistance
         
         # Use cosine law to compute length of ray from origin cell to intersection
-        disc = (2 * dist * cos(adjustedRayAngle))**2 - 4 * (dist**2 - Cell.CELL_RADIUS**2)
+        disc = (2 * dist * math.cos(adjustedRayAngle))**2 - 4 * (dist**2 - Cell.CELL_RADIUS**2)
         if disc < 0:
-            raise ValueError("Discriminant in getIntersectionLength() is negative: (%f)^2 - 4(1)(%f) = %f, computed with distance %f and ray angle %f" % (2 * dist * cos(adjustedRayAngle), dist**2 - Cell.CELL_RADIUS**2, disc, dist, adjustedRayAngle))
+            raise ValueError("Discriminant in getIntersectionLength() is negative: (%f)^2 - 4(1)(%f) = %f, computed with distance %f and ray angle %f" % (2 * dist * math.cos(adjustedRayAngle), dist**2 - Cell.CELL_RADIUS**2, disc, dist, adjustedRayAngle))
         
-        root = (2 * dist * cos(adjustedRayAngle) - disc**0.5)/2
+        root = (2 * dist * math.cos(adjustedRayAngle) - disc**0.5)/2
         if root < 0:
             raise ValueError("Found negative value for length of intersection in getVision()")
         
@@ -287,7 +287,7 @@ class Cell:
         if otherCell.type == self.type or dist >= self.viewDistance + Cell.CELL_RADIUS:
             return outputTensor
 
-        cellAngle = atan2(otherCellCoords[1] - self.xyPos[1], otherCellCoords[0] - self.xyPos[0])
+        cellAngle = math.atan2(otherCellCoords[1] - self.xyPos[1], otherCellCoords[0] - self.xyPos[0])
 
         # Attempt to find 2 adjacent rays that hit `otherCell`
         rayLowerIndex = int((cellAngle - self.angle) // self.rayGap + self.rayCount // 2)
@@ -330,9 +330,9 @@ class Cell:
         """ Draw the cell on `canvas` """
         if drawRays:
             for ray in self.rays:
-                rayDest = (self.xyPos[0] + self.viewDistance*cos(self.angle + ray), self.xyPos[1] + self.viewDistance*sin(self.angle + ray))
-                draw.line(screen, Cell.RAY_COLOUR, self.xyPos, rayDest, 1)
-        draw.circle(screen, self.colour, self.xyPos, Cell.CELL_RADIUS, 0)
+                rayDest = (self.xyPos[0] + self.viewDistance*math.cos(self.angle + ray), self.xyPos[1] + self.viewDistance*math.sin(self.angle + ray))
+                pyg.draw.line(screen, Cell.RAY_COLOUR, self.xyPos, rayDest, 1)
+        pyg.draw.circle(screen, self.colour, self.xyPos, Cell.CELL_RADIUS, 0)
 
         #draw.line(screen, self.colour, self.xyPos, Cell.CELL_FRONT_LENGTH, 2)
         #draw outward rays

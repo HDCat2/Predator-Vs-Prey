@@ -1,19 +1,19 @@
-from CellInformation import *
-from pygame import *
+import CellInformation as ci
+import pygame as pyg
 
-init()
+pyg.init()
 
 WIDTH, HEIGHT = 1280, 720
 
-screen = display.set_mode((WIDTH, HEIGHT))
+screen = pyg.display.set_mode((WIDTH, HEIGHT))
 
-map = Map(WIDTH, HEIGHT, 10, 10, 100, 100, True)
+map = ci.Map(WIDTH, HEIGHT, 10, 10, 100, 100, True)
 
 running = True
 
 while running:
-    for action in event.get():
-        if action.type == QUIT:
+    for action in pyg.event.get():
+        if action.type == pyg.QUIT:
             running = False
             map.kill()
             break
@@ -21,6 +21,6 @@ while running:
     map.update()
     map.draw(screen)
 
-    display.flip()
+    pyg.display.flip()
 
 quit()

@@ -8,7 +8,6 @@ parentDirectory = os.path.dirname(currentDirectory)
 
 sys.path.append(parentDirectory)
 
-import CellAI as cai
 import CellInformation as ci
 import CellUtil as cu
 import math
