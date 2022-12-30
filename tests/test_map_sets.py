@@ -98,12 +98,11 @@ def test_update_sets():
 
     for ind in indexSet11:
         if ind not in indexSet12:
-            if cell1 in cell1.CELL_SETS[ind[0]][ind[1]]:
-                assert(False)
+            assert(not cell1 in cell1.CELL_SETS[ind[0]][ind[1]])
+
 
     for ind in indexSet12:
-        if cell1 not in cell1.CELL_SETS[ind[0]][ind[1]]:
-            assert(False)
+        assert(not cell1 not in cell1.CELL_SETS[ind[0]][ind[1]])
 
     indexSet21 = cell2.getSetIndices()
     indexSet22 = cell2.getSetIndices(cell2New)
@@ -111,17 +110,10 @@ def test_update_sets():
 
     for ind in indexSet21:
         if ind not in indexSet22:
-            if cell2 in cell2.CELL_SETS[ind[0]][ind[1]]:
-                assert (False)
+            assert(not cell2 in cell2.CELL_SETS[ind[0]][ind[1]])
 
     for ind in indexSet22:
-        if cell2 not in cell2.CELL_SETS[ind[0]][ind[1]]:
-            assert (False)
+        assert(not cell2 not in cell2.CELL_SETS[ind[0]][ind[1]])
 
     dummyMap.kill()
 
-test_map_set_initialization()
-test_get_set_index()
-test_wrap_coords()
-test_get_set_indices()
-test_update_sets()
