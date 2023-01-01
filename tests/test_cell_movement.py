@@ -1,4 +1,4 @@
-""" A collection of unit tests for cell vision calculation and its associated methods """
+""" A collection of unit tests for cell movement and collision calculations """
 
 import sys
 import os
