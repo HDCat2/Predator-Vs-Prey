@@ -175,15 +175,16 @@ class Cell:
         return (x, y)
     
     def isColliding(self, otherCell):
-        """ Detect if collision is happening and modify collisionModifier. """
-        cellx, celly = self.wrapCoords(otherCell.xyPos)
-        v = [self.xyPos[0] - cellx, self.xyPos[1] - celly]
-        distance = (v[0]**2 + v[1]**2)**0.5
+        """ Detect if collision is happening and modify collisionModifier.
+        This method should only be called once per pair of cells for each frame.
+        """
+        wrappedCoords = self.wrapCoords(otherCell.xyPos)
+        distance = np.linalg.norm(np.subtract(self.xyPos, wrappedCoords))
         if distance > Cell.CELL_RADIUS * 2:
             return False
 
-        #if self.type == otherCell.type:
-            #self.repel(otherCell)
+        if self.type == otherCell.type:
+            self.repel(otherCell)
 
         return True
 
@@ -226,16 +227,18 @@ class Cell:
         apply a movement on both cells directly away from each other that will be processed
         in `move()`.
         """
-        v = [self.xyPos[0] - otherCell.xyPos[0], self.xyPos[1] - otherCell.xyPos[1]]
-        distance = (v[0] ** 2 + v[1] ** 2) ** 0.5
+        v = np.subtract(otherCell.xyPos, self.xyPos)
+        distance = np.linalg.norm(v)
 
         if distance == 0:
             self.collisionModifier[1] += Cell.MAXIMUM_SPEED
             otherCell.collisionModifier[1] -= Cell.MAXIMUM_SPEED
+            return
 
         proximityFactor = 1 - distance / (Cell.CELL_RADIUS * 2)
         v = [v[0] / distance * proximityFactor * Cell.MAXIMUM_SPEED,
-             self.xyPos[1] - v[0] / distance * proximityFactor * Cell.MAXIMUM_SPEED]
+             v[1] / distance * proximityFactor * Cell.MAXIMUM_SPEED]
+        
         self.collisionModifier[0] -= v[0]
         self.collisionModifier[1] -= v[1]
         otherCell.collisionModifier[0] += v[0]
