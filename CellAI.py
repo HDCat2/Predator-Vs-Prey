@@ -10,20 +10,20 @@ class CellNet(nn.Module):
         super().__init__()
         self.layers = nn.ModuleList()
         self.layers.append(nn.Linear(rayCount + 1, CellNet.NUM_HIDDEN_LAYER_NEURONS, bias=False))
-        for i in range(CellNet.HIDDEN_LAYERS - 1):
+        for i in range(CellNet.NUM_HIDDEN_LAYERS - 1):
             self.layers.append(nn.Linear(CellNet.NUM_HIDDEN_LAYER_NEURONS, CellNet.NUM_HIDDEN_LAYER_NEURONS, bias=False))
         self.layers.append(nn.Linear(CellNet.NUM_HIDDEN_LAYER_NEURONS, 2, False)) # Output layer corresponds to speed and angular velocity
 
         self.eval() # With our method, we won't need to train the model
 
     def forward(self, x):
-        """ Feed input into the neural network and obtain movement information as output"""
+        """ Feed input into the neural network and obtain movement information as output """
         for i in range(CellNet.NUM_HIDDEN_LAYERS):
             x = F.relu(self.layers[i](x))
         x = self.layers[-1](x)
         return F.log_softmax(x, dim=1)
 
     def mutate(self, generation):
-        """ Randomly mutate the neural network according to generation number"""
+        """ Randomly mutate the neural network according to generation number """
         decay = 1/(1 + generation * CellNet.DECAY_RATE) * CellNet.INITIAL_MUTATION_RATE
         raise NotImplementedError()
