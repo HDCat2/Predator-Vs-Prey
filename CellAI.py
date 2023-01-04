@@ -17,12 +17,13 @@ class CellNet(nn.Module):
         self.eval() # With our method, we won't need to train the model
 
     def forward(self, x):
-        """ Feed """
+        """ Feed input into the neural network and obtain movement information as output"""
         for i in range(CellNet.NUM_HIDDEN_LAYERS):
             x = F.relu(self.layers[i](x))
         x = self.layers[-1](x)
         return F.log_softmax(x, dim=1)
 
     def mutate(self, generation):
+        """ Randomly mutate the neural network according to generation number"""
         decay = 1/(1 + generation * CellNet.DECAY_RATE) * CellNet.INITIAL_MUTATION_RATE
         raise NotImplementedError()
