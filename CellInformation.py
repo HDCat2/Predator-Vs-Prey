@@ -5,6 +5,7 @@ from time import time
 import random as rdm
 import numpy as np
 import CellUtil as cu
+import CellAI as ca
 import os
 
 class Map:
