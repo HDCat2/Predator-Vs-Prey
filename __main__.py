@@ -5,6 +5,10 @@ pyg.init()
 
 WIDTH, HEIGHT = 1280, 720
 
+FPS = 60 # frames per second setting
+fpsClock = pyg.time.Clock()
+
+
 screen = pyg.display.set_mode((WIDTH, HEIGHT))
 
 map = ci.Map(WIDTH, HEIGHT, 10, 10, 100, 100, True)
@@ -16,11 +20,12 @@ while running:
         if action.type == pyg.QUIT:
             running = False
             map.kill()
-            break
+            quit()
 
     map.update()
     map.draw(screen)
 
     pyg.display.flip()
+    fpsClock.tick(FPS)
 
 quit()

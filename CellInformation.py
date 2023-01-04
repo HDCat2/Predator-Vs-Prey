@@ -10,6 +10,7 @@ import os
 
 class Map:
     HISTORY_INTERVAL = 2
+    MUTATE_INTERVAL = 2
 
     def __init__(self, width: int, height: int, startPreys: int, startPreds: int, maxPreys: int, maxPreds: int, doLogging: bool):
         """Creates a map object to hold cells"""
@@ -39,10 +40,8 @@ class Map:
             self.predList.append(pred)
 
     def updateHistory(self):
-        if (time() - self.timer) > Map.HISTORY_INTERVAL:
-            self.timer = time()
-            if self.doLogs:
-                self.writeInformation()
+        if self.doLogs:
+            self.writeInformation()
             #write history into file
 
     def writeInformation(self):
@@ -64,13 +63,21 @@ class Map:
 
     def update(self):
         """Updates all cells in the map for the current frame"""
-        self.updateHistory()
 
         for prey in self.preyList:
             prey.update()
 
         for pred in self.predList:
             pred.update()
+
+        if (time() - self.timer) > Map.HISTORY_INTERVAL:
+            self.timer = time()
+            self.updateHistory()
+            for prey in self.preyList:
+                prey.mutate()
+
+            for pred in self.predList:
+                pred.mutate()
 
         self.frameCount += 1
 
@@ -86,8 +93,8 @@ class Map:
 
 
 class Cell:
-    MAXIMUM_SPEED = 100
-    MAXIMUM_TURN_SPEED = 0.1
+    MAXIMUM_SPEED = 0.5
+    MAXIMUM_TURN_SPEED = 0.001
     DEFAULT_ANGLE = 0
     EMPTY_NETWORK = 0
     CELL_RADIUS = 10
@@ -108,6 +115,7 @@ class Cell:
         self.angle = Cell.DEFAULT_ANGLE
         self.angularVelocity = 0
         self.collisionModifier = [0,0]
+        self.startingNetwork = None
         self.generationNumber = previousGenerationNumber + 1
         self.viewDistance = Cell.VIEW_DISTANCE
         self.lifeLength = 0
@@ -120,6 +128,8 @@ class Cell:
         self.rayCount = None
         self.rayGap = None
         self.map = cellMap
+        self.energy = None
+        self.maxEnergy = None
 
         if Cell.CELL_SETS == None:
             Cell.BOX_HOR_COUNT = self.map.width//(Cell.CELL_RADIUS * 4 + Cell.VIEW_DISTANCE * 2+5)
@@ -268,8 +278,8 @@ class Cell:
         
         root = (2 * dist * math.cos(adjustedRayAngle) - disc**0.5)/2
         if root < 0:
-            raise ValueError("Found negative value for length of intersection in getVision()")
-        
+            return 0
+            #raise ValueError("Found negative value for length of intersection in getVision()")
         return 1 - root/self.viewDistance
 
     def getVisionOfCell(self, otherCell):
@@ -314,21 +324,35 @@ class Cell:
                     rayUpperIndex += 1
                 else:
                     break
-        
         return outputTensor
 
     def getVision(self):
         """ Get vision of all cells as input for neural network """
-        #raise NotImplementedError()
         inputTensor = [0 for i in range(self.rayCount)]
         for otherCell in Cell.CELL_SETS[self.getSetIndex()[0]][self.getSetIndex()[1]]:
+            if otherCell == self:
+                continue
             otherCellVision = self.getVisionOfCell(otherCell)
             inputTensor = [max(inputTensor[i], otherCellVision[i]) for i in range(self.rayCount)]
-        
+
         return inputTensor
 
+    def getMove(self):
+        """ Feed vision input from `getVision()` into neural network """
+        inputTensor = self.getVision()
+        inputTensor.append(self.energy/self.maxEnergy)
+        moveSpeed, turnSpeed = self.startingNetwork.forward(inputTensor)
+        self.speed = moveSpeed * Cell.MAXIMUM_SPEED
+        self.angularVelocity = turnSpeed * Cell.MAXIMUM_TURN_SPEED
+
     def update(self):
+        self.getMove()
         self.move()
+        self.turn()
+
+    def mutate(self):
+        """Randomly changes synapses in the cells neural network depending on generation"""
+        self.startingNetwork.mutate(self.generationNumber)
 
     def draw(self, screen, drawRays = False):
         """ Draw the cell on `canvas` """
@@ -359,12 +383,10 @@ class Predator(Cell):
         self.colour = Cell.PREDATOR_COLOUR
         self.rays = [-Predator.RAY_GAP*(Predator.RAY_COUNT//2) + Predator.RAY_GAP*i for i in range(Predator.RAY_COUNT)]
         self.rayCount = Predator.RAY_COUNT
+        self.startingNetwork = ca.CellNet(self.rayCount)
         self.rayGap = Predator.RAY_GAP
         self.viewDistance = Predator.VIEW_DISTANCE
-
-    def getMove(self):
-        """ Feed vision input from `getVision()` into neural network """
-        raise NotImplementedError()
+        self.maxEnergy = Predator.MAXIMUM_ENERGY
     
     def eatPrey(self, victim):
         """ Attempt to eat `victim` """
@@ -396,11 +418,9 @@ class Prey(Cell):
         self.rays = [-Prey.RAY_GAP*(Prey.RAY_COUNT//2) + Prey.RAY_GAP*i for i in range(Prey.RAY_COUNT)]
         self.rayCount = Prey.RAY_COUNT
         self.rayGap = Prey.RAY_GAP
+        self.startingNetwork = ca.CellNet(self.rayCount)
         self.viewDistance = Prey.VIEW_DISTANCE
-
-    def getMove(self):
-        """ Feed vision input from `getVision()` into neural network """
-        raise NotImplementedError()
+        self.maxEnergy = Prey.MAXIMUM_ENERGY
 
     def canSplit(self):
         """ Check if cell has lived long enough to split """
