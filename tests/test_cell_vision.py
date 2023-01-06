@@ -56,3 +56,23 @@ def test_predator_vision_cell_inside():
 
     cell1Vision = cell1.getVisionOfCell(cell2)
     assert(cell1Vision == [1 for i in range(15)])
+
+def test_predator_vision_cell_behind():
+    dummyMap = ci.Map(1280,720,0,0,1,1, False)
+    cell1 = ci.Predator(dummyMap, None, -1, [100,100])
+    cell2 = ci.Prey(dummyMap, None, -1, [100,0])
+
+    cell1.angle = math.pi/2
+    cell1Vision = cell1.getVisionOfCell(cell2)
+
+    assert(cell1Vision == [0 for i in range(15)])
+
+def test_predator_vision_tangent():
+    dummyMap = ci.Map(1280,720,0,0,1,1, False)
+    cell1 = ci.Predator(dummyMap, None, -1, [100,100])
+    cell2 = ci.Prey(dummyMap, None, -1, [120,90])
+
+    cell1Vision = cell1.getVisionOfCell(cell2)
+    almostCorrectAns = [0.8761290523767042, 0.8748803096248446, 0.8725089999277192, 0.868798237143145, 0.8633279003850999, 0.8552251097915649, 0.8421795313891152, 0.8, 0, 0, 0, 0, 0, 0, 0]
+
+    assert(np.linalg.norm(np.subtract(cell1Vision, almostCorrectAns)) < 0.00001)

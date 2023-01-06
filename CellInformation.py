@@ -274,12 +274,12 @@ class Cell:
         # Use cosine law to compute length of ray from origin cell to intersection
         disc = (2 * dist * math.cos(adjustedRayAngle))**2 - 4 * (dist**2 - Cell.CELL_RADIUS**2)
         if disc < 0:
-            raise ValueError("Discriminant in getIntersectionLength() is negative: (%f)^2 - 4(1)(%f) = %f, computed with distance %f and ray angle %f" % (2 * dist * math.cos(adjustedRayAngle), dist**2 - Cell.CELL_RADIUS**2, disc, dist, adjustedRayAngle))
+            disc = 0 # It's probably the tangent case - set to 0
+            #raise ValueError("Discriminant in getIntersectionLength() is negative: (%f)^2 - 4(1)(%f) = %f, parameters (%f, %f, %d, self coords [%f,%f], other coords [%f, %f])" % (2 * dist * math.cos(adjustedRayAngle), dist**2 - Cell.CELL_RADIUS**2, disc, cellAngle, dist, rayIdx, self.xyPos[0], self.xyPos[1], otherCell.xyPos[0], otherCell.xyPos[1]))
         
         root = (2 * dist * math.cos(adjustedRayAngle) - disc**0.5)/2
         if root < 0:
-            return 0
-            #raise ValueError("Found negative value for length of intersection in getVision()")
+            raise ValueError("Found negative value for length of intersection (%f) in getVision(), parameters (%f, %f, %d, self coords [%f, %f], other coords [%f,%f])" % (root, cellAngle, dist, rayIdx, self.xyPos[0], self.xyPos[1], otherCell.xyPos[0], otherCell.xyPos[1]))
         return 1 - root/self.viewDistance
 
     def getVisionOfCell(self, otherCell):
