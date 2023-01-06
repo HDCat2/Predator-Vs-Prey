@@ -329,12 +329,10 @@ class Cell:
         disc = (2 * dist * math.cos(adjustedRayAngle))**2 - 4 * (dist**2 - Cell.CELL_RADIUS**2)
         if disc < 0:
             disc = 0 # It's probably the tangent case - set to 0
-            #raise ValueError("Discriminant in getIntersectionLength() is negative: (%f)^2 - 4(1)(%f) = %f, parameters (%f, %f, %d, self coords [%f,%f], other coords [%f, %f])" % (2 * dist * math.cos(adjustedRayAngle), dist**2 - Cell.CELL_RADIUS**2, disc, cellAngle, dist, rayIdx, self.xyPos[0], self.xyPos[1], otherCell.xyPos[0], otherCell.xyPos[1]))
         
         root = (2 * dist * math.cos(adjustedRayAngle) - disc**0.5)/2
         if root < 0:
             root = 0 # It's probably an FP error caused by the cells being too close - set to 0
-            #raise ValueError("Found negative value for length of intersection (%f) in getVision(), parameters (%f, %f, %d, self coords [%f, %f], other coords [%f,%f])" % (root, cellAngle, dist, rayIdx, self.xyPos[0], self.xyPos[1], otherCell.xyPos[0], otherCell.xyPos[1]))
         return root
 
     def getVisionOfCell(self, otherCell):
