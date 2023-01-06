@@ -76,6 +76,15 @@ class Map:
     def update(self):
         """Updates all cells in the map for the current frame"""
 
+        # Splitting
+        for prey in self.preyList:
+            if prey.canSplit():
+                prey.split()
+
+        for pred in self.predList:
+            if pred.canSplit():
+                pred.split()
+
         # Movement
         for prey in self.preyList:
             prey.update()
@@ -109,15 +118,6 @@ class Map:
             if pred.alive:
                 self.predList.append(pred)
 
-        # Splitting
-        for prey in self.preyList:
-            if prey.canSplit():
-                prey.split()
-
-        for pred in self.predList:
-            if pred.canSplit():
-                pred.split()
-
         # Mutations
         if self.frameCount % Map.HISTORY_INTERVAL == 0:
             self.timer = time()
@@ -135,10 +135,10 @@ class Map:
         screen.fill(self.colour)
 
         for prey in self.preyList:
-            prey.draw(screen, False)
+            prey.draw(screen, True)
 
         for pred in self.predList:
-            pred.draw(screen, False)
+            pred.draw(screen, True)
 
 
 class Cell:
@@ -181,6 +181,7 @@ class Cell:
         self.maxEnergy = None
         self.digestionTimer = None
         self.lifeLength = None
+        self.tensorVision = []
 
         if Cell.CELL_SETS == None:
             Cell.BOX_HOR_COUNT = self.map.width//(Cell.CELL_RADIUS * 4 + Cell.VIEW_DISTANCE * 2+5)
@@ -394,6 +395,7 @@ class Cell:
     def getMove(self):
         """ Feed vision input from `getVision()` into neural network """
         inputTensor = self.getVision()
+        self.tensorVision = inputTensor[:]
         inputTensor.append(self.energy/self.maxEnergy)
         moveSpeed, turnSpeed = self.startingNetwork.forward(inputTensor, self.viewDistance)
         self.speed = (moveSpeed*0.5+0.5) * Cell.MAXIMUM_SPEED
@@ -420,9 +422,11 @@ class Cell:
     def draw(self, screen, drawRays = False):
         """ Draw the cell on `canvas` """
         if drawRays:
+            count = 0
             for ray in self.rays:
-                rayDest = (self.xyPos[0] + self.viewDistance*math.cos(self.angle + ray), self.xyPos[1] + self.viewDistance*math.sin(self.angle + ray))
+                rayDest = (self.xyPos[0] + self.tensorVision[count]*math.cos(self.angle + ray), self.xyPos[1] + self.tensorVision[count]*math.sin(self.angle + ray))
                 pyg.draw.line(screen, Cell.RAY_COLOUR, self.xyPos, rayDest, 1)
+                count += 1
         pyg.draw.circle(screen, self.colour, self.xyPos, Cell.CELL_RADIUS, 0)
 
         #draw.line(screen, self.colour, self.xyPos, Cell.CELL_FRONT_LENGTH, 2)
