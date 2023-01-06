@@ -273,11 +273,11 @@ class Cell:
         rayAngle = self.angle + self.rays[rayIdx]
         # Check if ray intersects with circle
         if cu.minDistanceOfRayFromPoint(self.xyPos, [math.cos(rayAngle), math.sin(rayAngle)], otherCell.xyPos) > Cell.CELL_RADIUS:
-            return 0
+            return self.viewDistance
 
         adjustedRayAngle = abs(cellAngle - rayAngle) # angle in triangle that we will try to compute intersection length with
         if adjustedRayAngle <= 0.000001:
-            return 1 - (dist - Cell.CELL_RADIUS)/self.viewDistance
+            return dist - Cell.CELL_RADIUS
         
         # Use cosine law to compute length of ray from origin cell to intersection
         disc = (2 * dist * math.cos(adjustedRayAngle))**2 - 4 * (dist**2 - Cell.CELL_RADIUS**2)
@@ -287,11 +287,9 @@ class Cell:
         
         root = (2 * dist * math.cos(adjustedRayAngle) - disc**0.5)/2
         if root < 0:
-            root = 0
+            root = 0 # It's probably an FP error caused by the cells being too close - set to 0
             #raise ValueError("Found negative value for length of intersection (%f) in getVision(), parameters (%f, %f, %d, self coords [%f, %f], other coords [%f,%f])" % (root, cellAngle, dist, rayIdx, self.xyPos[0], self.xyPos[1], otherCell.xyPos[0], otherCell.xyPos[1]))
-            #print(self.xyPos, self.angle, otherCell.xyPos, otherCell.angle)
-            #raise ValueError("Found negative value for length of intersection (%f) in getVision(), parameters (%f, %f, %d, self coords [%f, %f], other coords [%f,%f])" % (root, cellAngle, dist, rayIdx, self.xyPos[0], self.xyPos[1], otherCell.xyPos[0], otherCell.xyPos[1]))
-        return 1 - root/self.viewDistance
+        return root
 
     def getVisionOfCell(self, otherCell):
         """ Get vision of other cell
@@ -300,13 +298,13 @@ class Cell:
         This is different from getVision as this method behaves as if only self and otherCell exist
         on the map
         """
-        outputTensor = [0 for i in range(self.rayCount)]
+        outputTensor = [self.VIEW_DISTANCE for i in range(self.rayCount)]
         otherCellCoords = self.wrapCoords(otherCell.xyPos)
         dist = np.linalg.norm(np.subtract(otherCellCoords, self.xyPos))
 
         # Check if the center of the cell is inside the other cell
         if dist < Cell.CELL_RADIUS:
-            return [1 for i in range(self.rayCount)]
+            return [0 for i in range(self.rayCount)]
         
         # Check if cell is out of range
         if otherCell.type == self.type or dist >= self.viewDistance + Cell.CELL_RADIUS:
@@ -322,7 +320,7 @@ class Cell:
         if 0 <= rayLowerIndex < self.rayCount:
             while rayLowerIndex >= 0:
                 outputTensor[rayLowerIndex] = self.getIntersectionLength(cellAngle, dist, rayLowerIndex, otherCell)
-                if outputTensor[rayLowerIndex]:
+                if outputTensor[rayLowerIndex] < self.VIEW_DISTANCE:
                     rayLowerIndex -= 1
                 else:
                     break
@@ -331,7 +329,7 @@ class Cell:
         if 0 <= rayUpperIndex < self.rayCount:
             while rayUpperIndex < self.rayCount:
                 outputTensor[rayUpperIndex] = self.getIntersectionLength(cellAngle, dist, rayUpperIndex, otherCell)
-                if outputTensor[rayUpperIndex]:
+                if outputTensor[rayUpperIndex] < self.VIEW_DISTANCE:
                     rayUpperIndex += 1
                 else:
                     break
@@ -339,12 +337,12 @@ class Cell:
 
     def getVision(self):
         """ Get vision of all cells as input for neural network """
-        inputTensor = [0 for i in range(self.rayCount)]
+        inputTensor = [self.viewDistance for i in range(self.rayCount)]
         for otherCell in Cell.CELL_SETS[self.getSetIndex()[0]][self.getSetIndex()[1]]:
             if otherCell == self:
                 continue
             otherCellVision = self.getVisionOfCell(otherCell)
-            inputTensor = [max(inputTensor[i], otherCellVision[i]) for i in range(self.rayCount)]
+            inputTensor = [min(inputTensor[i], otherCellVision[i]) for i in range(self.rayCount)]
 
         return inputTensor
 
@@ -394,11 +392,11 @@ class Predator(Cell):
         self.colour = Cell.PREDATOR_COLOUR
         self.rays = [-Predator.RAY_GAP*(Predator.RAY_COUNT//2) + Predator.RAY_GAP*i for i in range(Predator.RAY_COUNT)]
         self.rayCount = Predator.RAY_COUNT
-        self.startingNetwork = ca.CellNet(self.rayCount)
         self.rayGap = Predator.RAY_GAP
         self.viewDistance = Predator.VIEW_DISTANCE
         self.maxEnergy = Predator.MAXIMUM_ENERGY
-    
+        self.startingNetwork = ca.CellNet(self.rayCount)
+
     def eatPrey(self, victim):
         """ Attempt to eat `victim` """
         raise NotImplementedError()
@@ -429,9 +427,9 @@ class Prey(Cell):
         self.rays = [-Prey.RAY_GAP*(Prey.RAY_COUNT//2) + Prey.RAY_GAP*i for i in range(Prey.RAY_COUNT)]
         self.rayCount = Prey.RAY_COUNT
         self.rayGap = Prey.RAY_GAP
-        self.startingNetwork = ca.CellNet(self.rayCount)
         self.viewDistance = Prey.VIEW_DISTANCE
         self.maxEnergy = Prey.MAXIMUM_ENERGY
+        self.startingNetwork = ca.CellNet(self.rayCount)
 
     def canSplit(self):
         """ Check if cell has lived long enough to split """

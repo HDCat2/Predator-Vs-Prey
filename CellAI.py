@@ -28,9 +28,9 @@ class CellNet(nn.Module):
 
         self.eval() # With our method, we won't need to train the model
 
-    def forward(self, x):
+    def forward(self, x, viewDistance):
         """ Feed input into the neural network and obtain movement information as output """
-        x = torch.FloatTensor(x)
+        x = torch.FloatTensor([1 - i/viewDistance for i in x])
         with torch.no_grad():
             for i in range(CellNet.NUM_HIDDEN_LAYERS):
                 x = F.relu(self.layers[i](x))
