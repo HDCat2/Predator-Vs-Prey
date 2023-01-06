@@ -76,13 +76,25 @@ class Map:
     def update(self):
         """Updates all cells in the map for the current frame"""
 
+        # Movement
         for prey in self.preyList:
             prey.update()
 
         for pred in self.predList:
             pred.update()
 
-        #deal with collisions
+        # Deal with collisions
+        for prey in self.preyList:
+            for cell in prey.getCollisions():
+                prey.repel(cell)
+
+        for pred in self.predList:
+            for cell in pred.getCollisions():
+                if cell.type == 1:
+                    if not pred.eatPrey(cell):
+                        pred.repel(cell)
+                else:
+                    pred.repel(cell)
 
         # Killing dead cells
         preyList = self.preyList
@@ -98,7 +110,6 @@ class Map:
                 self.predList.append(pred)
 
         # Splitting
-
         for prey in self.preyList:
             if prey.canSplit():
                 prey.split()
@@ -107,6 +118,7 @@ class Map:
             if pred.canSplit():
                 pred.split()
 
+        # Mutations
         if self.frameCount % Map.HISTORY_INTERVAL == 0:
             self.timer = time()
             self.updateHistory()
@@ -116,8 +128,6 @@ class Map:
             for pred in self.predList:
                 pred.mutate()
 
-
-
         self.frameCount += 1
 
     def draw(self, screen):
@@ -125,14 +135,14 @@ class Map:
         screen.fill(self.colour)
 
         for prey in self.preyList:
-            prey.draw(screen, True)
+            prey.draw(screen, False)
 
         for pred in self.predList:
-            pred.draw(screen, True)
+            pred.draw(screen, False)
 
 
 class Cell:
-    MAXIMUM_SPEED = 0.5
+    MAXIMUM_SPEED = 1.5
     MAXIMUM_TURN_SPEED = 0.001
     DEFAULT_ANGLE = 0
     EMPTY_NETWORK = 0
@@ -206,7 +216,7 @@ class Cell:
         setCoord = self.getSetIndex()
         collisionList = []
         for cell in Cell.CELL_SETS[setCoord[0]][setCoord[1]]:
-            if cell != self and self.isColliding(cell):
+            if cell.alive and cell != self and self.isColliding(cell):
                 collisionList.append(cell)
         return collisionList
 
@@ -396,8 +406,12 @@ class Cell:
 
         if self.type == 0:
             self.digestionTimer += 1
+            self.energy -= 0.1
+            if self.energy < 0:
+                self.alive = False
         else:
             self.lifeLength += 1
+            self.energy += 1
 
     def mutate(self):
         """Randomly changes synapses in the cells neural network depending on generation"""
@@ -444,6 +458,8 @@ class Predator(Cell):
             victim.alive = False
             self.energy += Predator.CONSUMPTION_ENERGY
             self.digestionTimer = 0
+            return True
+        return False
     
     def canSplit(self):
         """ Check if cell has enough energy to split """
