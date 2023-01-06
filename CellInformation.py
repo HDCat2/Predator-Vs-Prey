@@ -7,9 +7,10 @@ import numpy as np
 import CellUtil as cu
 import CellAI as ca
 import os
+from copy import deepcopy
 
 class Map:
-    HISTORY_INTERVAL = 2
+    HISTORY_INTERVAL = 100
     MUTATE_INTERVAL = 2
 
     def __init__(self, width: int, height: int, startPreys: int, startPreds: int, maxPreys: int, maxPreds: int, doLogging: bool):
@@ -64,10 +65,13 @@ class Map:
     def dupCell(self, cell):
         """Takes a cell and duplicates it in the map"""
         type = cell.type
-        if type == 1:
-            pass
+
+        if type == 0:
+            newCell = Predator(self, deepcopy(cell.startingNetwork), cell.generationNumber + 1, cell.xyPos)
+            self.predList.append(newCell)
         else:
-            pass
+            newCell = Prey(self, deepcopy(cell.startingNetwork), cell.generationNumber + 1, cell.xyPos)
+            self.preyList.append(newCell)
 
     def update(self):
         """Updates all cells in the map for the current frame"""
@@ -78,7 +82,32 @@ class Map:
         for pred in self.predList:
             pred.update()
 
-        if (time() - self.timer) > Map.HISTORY_INTERVAL:
+        #deal with collisions
+
+        # Killing dead cells
+        preyList = self.preyList
+        self.preyList = []
+        for prey in preyList:
+            if prey.alive:
+                self.preyList.append(prey)
+
+        predList = self.predList
+        self.predList = []
+        for pred in predList:
+            if pred.alive:
+                self.predList.append(pred)
+
+        # Splitting
+
+        for prey in self.preyList:
+            if prey.canSplit():
+                prey.split()
+
+        for pred in self.predList:
+            if pred.canSplit():
+                pred.split()
+
+        if self.frameCount % Map.HISTORY_INTERVAL == 0:
             self.timer = time()
             self.updateHistory()
             for prey in self.preyList:
@@ -86,6 +115,8 @@ class Map:
 
             for pred in self.predList:
                 pred.mutate()
+
+
 
         self.frameCount += 1
 
@@ -119,6 +150,7 @@ class Cell:
     BOX_VER_COUNT = 5
 
     def __init__(self, cellMap, startingNetwork = EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
+        self.alive = True
         self.speed = 0
         self.angle = Cell.DEFAULT_ANGLE
         self.angularVelocity = 0
@@ -126,10 +158,9 @@ class Cell:
         self.startingNetwork = None
         self.generationNumber = previousGenerationNumber + 1
         self.viewDistance = Cell.VIEW_DISTANCE
-        self.lifeLength = 0
         self.type = None #0 for predator, 1 for prey
         self.colour = (0, 0, 0)
-        self.xyPos = xyPos
+        self.xyPos = [float(xyPos[0]), float(xyPos[1])]
         if not self.xyPos:
             self.xyPos = [0.0, 0.0]
         self.rays = []
@@ -138,6 +169,8 @@ class Cell:
         self.map = cellMap
         self.energy = None
         self.maxEnergy = None
+        self.digestionTimer = None
+        self.lifeLength = None
 
         if Cell.CELL_SETS == None:
             Cell.BOX_HOR_COUNT = self.map.width//(Cell.CELL_RADIUS * 4 + Cell.VIEW_DISTANCE * 2+5)
@@ -149,6 +182,7 @@ class Cell:
             if Cell.BOX_OVERLAP >= min(Cell.BOX_SIZE)//2:
                 raise ValueError("Overlap larger than box size, reduce box count")
             Cell.CELL_SETS = [[set() for j in range(Cell.BOX_VER_COUNT)] for i in range(Cell.BOX_HOR_COUNT)]
+
         setCoords = self.getSetIndices()
         for coord in setCoords:
             Cell.CELL_SETS[coord[0]][coord[1]].add(self)
@@ -160,11 +194,11 @@ class Cell:
 
     def move(self):
         """ Modifies position according to speed, angle and collisionModifier """
-        newPosX = self.xyPos[0] + self.speed * math.cos(self.angle) + self.collisionModifier[0]
-        newPosY = self.xyPos[1] + self.speed * math.sin(self.angle) + self.collisionModifier[1]
+        newPosX = (self.xyPos[0] + self.speed * math.cos(self.angle) + self.collisionModifier[0]) % self.map.width
+        newPosY = (self.xyPos[1] + self.speed * math.sin(self.angle) + self.collisionModifier[1]) % self.map.height
         self.updateSets((newPosX, newPosY))
-        self.xyPos[0] = newPosX % self.map.width
-        self.xyPos[1] = newPosY % self.map.height
+        self.xyPos[0] = newPosX
+        self.xyPos[1] = newPosY
         self.collisionModifier = [0,0]
 
     def getCollisions(self):
@@ -217,7 +251,7 @@ class Cell:
         ret = set()
         if position == None:
             position = self.xyPos
-        for d in [(0, 0), (0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (-1, -1)]:
+        for d in [(0, 0), (0, 1), (1, 0), (0, -1), (-1, 0), (1, 1), (-1, -1), (1, -1), (-1, 1)]:
             coord = ((position[0]+Cell.BOX_OVERLAP*d[0]) % self.map.width, (position[1]+Cell.BOX_OVERLAP*d[1]) % self.map.height)
             setInd = self.getSetIndex(coord)
             ret.add(setInd)
@@ -237,6 +271,7 @@ class Cell:
         entered = set2 - set1
         for coord in exited:
             Cell.CELL_SETS[coord[0]][coord[1]].remove(self)
+
         for coord in entered:
             Cell.CELL_SETS[coord[0]][coord[1]].add(self)
 
@@ -350,7 +385,7 @@ class Cell:
         """ Feed vision input from `getVision()` into neural network """
         inputTensor = self.getVision()
         inputTensor.append(self.energy/self.maxEnergy)
-        moveSpeed, turnSpeed = self.startingNetwork.forward(inputTensor)
+        moveSpeed, turnSpeed = self.startingNetwork.forward(inputTensor, self.viewDistance)
         self.speed = (moveSpeed*0.5+0.5) * Cell.MAXIMUM_SPEED
         self.angularVelocity = turnSpeed * Cell.MAXIMUM_TURN_SPEED
 
@@ -358,6 +393,11 @@ class Cell:
         self.getMove()
         self.move()
         self.turn()
+
+        if self.type == 0:
+            self.digestionTimer += 1
+        else:
+            self.lifeLength += 1
 
     def mutate(self):
         """Randomly changes synapses in the cells neural network depending on generation"""
@@ -381,6 +421,7 @@ class Predator(Cell):
     RAY_COUNT = 15
     RAY_GAP = 0.06
     VIEW_DISTANCE = 100
+    CONSUMPTION_ENERGY = 50
 
     def __init__(self, cellMap, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         if xyPos == None:
@@ -399,7 +440,10 @@ class Predator(Cell):
 
     def eatPrey(self, victim):
         """ Attempt to eat `victim` """
-        raise NotImplementedError()
+        if self.digestionTimer >= Predator.MAXIMUM_DIGESTION_TIMER:
+            victim.alive = False
+            self.energy += Predator.CONSUMPTION_ENERGY
+            self.digestionTimer = 0
     
     def canSplit(self):
         """ Check if cell has enough energy to split """
@@ -407,12 +451,15 @@ class Predator(Cell):
 
     def split(self):
         if self.canSplit:
-            raise NotImplementedError()
+            self.energy = Predator.INITIAL_ENERGY
+            self.map.dupCell(self)
+            self.generationNumber += 1
+
 
 class Prey(Cell):
     MAXIMUM_ENERGY = 100
     INITIAL_ENERGY = 50
-    LIFESPAN = 10
+    LIFESPAN = 300
     RAY_COUNT = 15
     RAY_GAP = 0.2
     VIEW_DISTANCE = 50
@@ -423,6 +470,7 @@ class Prey(Cell):
         super().__init__(cellMap, inheritingNetwork, previousGenerationNumber, xyPos)
         self.energy = Prey.INITIAL_ENERGY
         self.type = 1
+        self.lifeLength = 0  # Marker to see when prey can split
         self.colour = Cell.PREY_COLOUR
         self.rays = [-Prey.RAY_GAP*(Prey.RAY_COUNT//2) + Prey.RAY_GAP*i for i in range(Prey.RAY_COUNT)]
         self.rayCount = Prey.RAY_COUNT
@@ -433,8 +481,10 @@ class Prey(Cell):
 
     def canSplit(self):
         """ Check if cell has lived long enough to split """
-        return self.lifeLength > Prey.LIFESPAN
+        return self.lifeLength >= Prey.LIFESPAN
 
     def split(self):
         if self.canSplit:
-            raise NotImplementedError()
+            self.lifeLength = 0
+            self.map.dupCell(self)
+            self.generationNumber += 1
