@@ -11,7 +11,7 @@ fpsClock = pyg.time.Clock()
 
 screen = pyg.display.set_mode((WIDTH, HEIGHT))
 
-map = ci.Map(WIDTH, HEIGHT, 10, 10, 100, 100, True)
+map = ci.Map(WIDTH, HEIGHT, 30, 30, 100, 100, True)
 
 running = True
 

@@ -61,6 +61,14 @@ class Map:
             self.file.close()
         Cell.CELL_SETS = None
 
+    def dupCell(self, cell):
+        """Takes a cell and duplicates it in the map"""
+        type = cell.type
+        if type == 1:
+            pass
+        else:
+            pass
+
     def update(self):
         """Updates all cells in the map for the current frame"""
 
@@ -281,6 +289,8 @@ class Cell:
         if root < 0:
             root = 0
             #raise ValueError("Found negative value for length of intersection (%f) in getVision(), parameters (%f, %f, %d, self coords [%f, %f], other coords [%f,%f])" % (root, cellAngle, dist, rayIdx, self.xyPos[0], self.xyPos[1], otherCell.xyPos[0], otherCell.xyPos[1]))
+            #print(self.xyPos, self.angle, otherCell.xyPos, otherCell.angle)
+            #raise ValueError("Found negative value for length of intersection (%f) in getVision(), parameters (%f, %f, %d, self coords [%f, %f], other coords [%f,%f])" % (root, cellAngle, dist, rayIdx, self.xyPos[0], self.xyPos[1], otherCell.xyPos[0], otherCell.xyPos[1]))
         return 1 - root/self.viewDistance
 
     def getVisionOfCell(self, otherCell):
@@ -343,7 +353,7 @@ class Cell:
         inputTensor = self.getVision()
         inputTensor.append(self.energy/self.maxEnergy)
         moveSpeed, turnSpeed = self.startingNetwork.forward(inputTensor)
-        self.speed = moveSpeed * Cell.MAXIMUM_SPEED
+        self.speed = (moveSpeed*0.5+0.5) * Cell.MAXIMUM_SPEED
         self.angularVelocity = turnSpeed * Cell.MAXIMUM_TURN_SPEED
 
     def update(self):
