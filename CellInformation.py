@@ -268,7 +268,7 @@ class Cell:
             return 0
 
         adjustedRayAngle = abs(cellAngle - rayAngle) # angle in triangle that we will try to compute intersection length with
-        if adjustedRayAngle == cellAngle:
+        if adjustedRayAngle <= 0.000001:
             return 1 - (dist - Cell.CELL_RADIUS)/self.viewDistance
         
         # Use cosine law to compute length of ray from origin cell to intersection
@@ -279,7 +279,8 @@ class Cell:
         
         root = (2 * dist * math.cos(adjustedRayAngle) - disc**0.5)/2
         if root < 0:
-            raise ValueError("Found negative value for length of intersection (%f) in getVision(), parameters (%f, %f, %d, self coords [%f, %f], other coords [%f,%f])" % (root, cellAngle, dist, rayIdx, self.xyPos[0], self.xyPos[1], otherCell.xyPos[0], otherCell.xyPos[1]))
+            root = 0
+            #raise ValueError("Found negative value for length of intersection (%f) in getVision(), parameters (%f, %f, %d, self coords [%f, %f], other coords [%f,%f])" % (root, cellAngle, dist, rayIdx, self.xyPos[0], self.xyPos[1], otherCell.xyPos[0], otherCell.xyPos[1]))
         return 1 - root/self.viewDistance
 
     def getVisionOfCell(self, otherCell):
