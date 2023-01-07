@@ -2,14 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import random as rnd
-import math
 from scipy import special
 
 class CellNet(nn.Module):
     INITIAL_MUTATION_RATE = 100
     DECAY_RATE = 1
     NUM_HIDDEN_LAYERS = 2 # Minimum of 1 hidden layer, otherwise change init
-    NUM_HIDDEN_LAYER_NEURONS = 64
+    NUM_HIDDEN_LAYER_NEURONS = 16
     def __init__(self, rayCount):
         super().__init__()
         self.layers = nn.ModuleList()
