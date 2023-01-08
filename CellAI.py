@@ -25,10 +25,14 @@ class CellNet(nn.Module):
     def forward(self, x, viewDistance):
         """ Feed input into the neural network and obtain movement information as output """
         x = torch.FloatTensor([1 - i/viewDistance for i in x])
+        if torch.cuda.is_available():
+            x = x.to("cuda:0")
         with torch.no_grad():
             for i in range(CellNet.NUM_HIDDEN_LAYERS):
                 x = F.relu(self.layers[i](x))
             x = self.layers[-1](x)
+        if torch.cuda.is_available():
+            x = x.cpu()
         return special.expit(x).tolist()
 
     def mutate(self, generation):

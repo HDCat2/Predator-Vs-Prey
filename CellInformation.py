@@ -7,6 +7,7 @@ import numpy as np
 import CellUtil as cu
 import CellAI as ca
 import os
+from torch import cuda
 from copy import deepcopy
 
 class Map:
@@ -460,7 +461,13 @@ class Predator(Cell):
         self.rayGap = Predator.RAY_GAP
         self.viewDistance = Predator.VIEW_DISTANCE
         self.maxEnergy = Predator.MAXIMUM_ENERGY
-        self.startingNetwork = ca.CellNet(self.rayCount)
+        if inheritingNetwork == Cell.EMPTY_NETWORK:
+            self.startingNetwork = ca.CellNet(self.rayCount)
+        else:
+            self.startingNetwork = inheritingNetwork
+        if cuda.is_available():
+            self.startingNetwork = self.startingNetwork.to("cuda:0")
+
 
     def eatPrey(self, victim):
         """ Attempt to eat `victim` """
@@ -503,7 +510,12 @@ class Prey(Cell):
         self.rayGap = Prey.RAY_GAP
         self.viewDistance = Prey.VIEW_DISTANCE
         self.maxEnergy = Prey.MAXIMUM_ENERGY
-        self.startingNetwork = ca.CellNet(self.rayCount)
+        if inheritingNetwork == Cell.EMPTY_NETWORK:
+            self.startingNetwork = ca.CellNet(self.rayCount)
+        else:
+            self.startingNetwork = inheritingNetwork
+        if cuda.is_available():
+            self.startingNetwork = self.startingNetwork.to("cuda:0")
 
     def canSplit(self):
         """ Check if cell has lived long enough to split """
