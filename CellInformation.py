@@ -106,13 +106,13 @@ class Map:
                     pred.repel(cell)
 
         # Killing dead cells
-        preyList = self.preyList
+        preyList = self.preyList[:]
         self.preyList = []
         for prey in preyList:
             if prey.alive:
                 self.preyList.append(prey)
 
-        predList = self.predList
+        predList = self.predList[:]
         self.predList = []
         for pred in predList:
             if pred.alive:
@@ -254,6 +254,7 @@ class Cell:
 
     def kill(self):
         """ Remove the cell from the map """
+        self.alive = False
         for p in self.getSetIndices():
             Cell.CELL_SETS[p[0]][p[1]].remove(self)
 
@@ -398,6 +399,10 @@ class Cell:
         self.tensorVision = inputTensor[:]
         inputTensor.append(self.energy/self.maxEnergy)
         moveSpeed, turnSpeed = self.startingNetwork.forward(inputTensor, self.viewDistance)
+        if self.type == 1:
+            moveSpeed = min(self.energy, moveSpeed)
+            self.energy -= moveSpeed
+
         self.speed = (moveSpeed*0.5+0.5) * Cell.MAXIMUM_SPEED
         self.angularVelocity = turnSpeed * Cell.MAXIMUM_TURN_SPEED
 
@@ -410,7 +415,7 @@ class Cell:
             self.digestionTimer += 1
             self.energy -= 0.1
             if self.energy < 0:
-                self.alive = False
+                self.kill()
         else:
             self.lifeLength += 1
             self.energy += 1
@@ -459,7 +464,7 @@ class Predator(Cell):
     def eatPrey(self, victim):
         """ Attempt to eat `victim` """
         if self.digestionTimer >= Predator.MAXIMUM_DIGESTION_TIMER:
-            victim.alive = False
+            victim.kill()
             self.energy += Predator.CONSUMPTION_ENERGY
             self.digestionTimer = 0
             return True
