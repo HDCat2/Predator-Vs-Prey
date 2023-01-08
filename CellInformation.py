@@ -144,7 +144,7 @@ class Map:
 
 
 class Cell:
-    MAXIMUM_SPEED = 1.5
+    MAXIMUM_SPEED = 0.5
     MAXIMUM_TURN_SPEED = 0.001
     DEFAULT_ANGLE = 0
     EMPTY_NETWORK = 0
@@ -163,8 +163,10 @@ class Cell:
 
     def __init__(self, cellMap, startingNetwork = EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
         self.alive = True
+        self.selected = False
         self.speed = 0
         self.angle = Cell.DEFAULT_ANGLE
+        self.angle = rdm.random() * math.pi * 2
         self.angularVelocity = 0
         self.collisionModifier = [0,0]
         self.startingNetwork = None
@@ -311,8 +313,8 @@ class Cell:
         
         self.collisionModifier[0] -= v[0]
         self.collisionModifier[1] -= v[1]
-        #otherCell.collisionModifier[0] += v[0]
-        #otherCell.collisionModifier[1] += v[1]
+        otherCell.collisionModifier[0] += v[0]
+        otherCell.collisionModifier[1] += v[1]
 
     def getIntersectionLength(self, cellAngle, dist, rayIdx, otherCell):
         """ Helper function for `getVision()`
@@ -320,10 +322,11 @@ class Cell:
         weight for neural network between 0 and 1 (0 if no intersection)
         Ray assumed to originate from self, and angle is calculated using cellAngle and rayIdx
         """
+        otherCellCoords = self.wrapCoords(otherCell.xyPos)
 
         rayAngle = self.angle + self.rays[rayIdx]
         # Check if ray intersects with circle
-        if cu.minDistanceOfRayFromPoint(self.xyPos, [math.cos(rayAngle), math.sin(rayAngle)], otherCell.xyPos) > Cell.CELL_RADIUS:
+        if cu.minDistanceOfRayFromPoint(self.xyPos, [math.cos(rayAngle), math.sin(rayAngle)], otherCellCoords) > Cell.CELL_RADIUS:
             return self.viewDistance
 
         adjustedRayAngle = abs(cellAngle - rayAngle) # angle in triangle that we will try to compute intersection length with
@@ -401,12 +404,15 @@ class Cell:
         self.tensorVision = inputTensor[:]
         inputTensor.append(self.energy/self.maxEnergy)
         moveSpeed, turnSpeed = self.startingNetwork.forward(inputTensor, self.viewDistance)
+
         if self.type == 1:
             moveSpeed = min(self.energy, moveSpeed)
             self.energy -= moveSpeed
+        self.speed = (moveSpeed * 2 - 1) * Cell.MAXIMUM_SPEED
+        if self.type == 0:
+            self.speed = abs(self.speed)
+        self.angularVelocity = (turnSpeed * 2 - 1) * Cell.MAXIMUM_TURN_SPEED
 
-        self.speed = (moveSpeed*0.5+0.5) * Cell.MAXIMUM_SPEED
-        self.angularVelocity = turnSpeed * Cell.MAXIMUM_TURN_SPEED
 
     def update(self):
         self.getMove()
@@ -415,7 +421,7 @@ class Cell:
 
         if self.type == 0:
             self.digestionTimer += 1
-            self.energy -= 0.1
+            self.energy -= 0.001
             if self.energy < 0:
                 self.kill()
         else:
@@ -441,11 +447,11 @@ class Cell:
 
 class Predator(Cell):
     MAXIMUM_DIGESTION_TIMER = 20
-    MAXIMUM_ENERGY = 100
+    MAXIMUM_ENERGY = 150
     INITIAL_ENERGY = 50
     RAY_COUNT = 15
     RAY_GAP = 0.06
-    VIEW_DISTANCE = 100
+    VIEW_DISTANCE = 150
     CONSUMPTION_ENERGY = 50
 
     def __init__(self, cellMap, inheritingNetwork = Cell.EMPTY_NETWORK, previousGenerationNumber = -1, xyPos = None):
@@ -492,7 +498,7 @@ class Predator(Cell):
 class Prey(Cell):
     MAXIMUM_ENERGY = 100
     INITIAL_ENERGY = 50
-    LIFESPAN = 300
+    LIFESPAN = 1000
     RAY_COUNT = 14
     RAY_GAP = 0.2
     VIEW_DISTANCE = 50
@@ -503,7 +509,7 @@ class Prey(Cell):
         super().__init__(cellMap, inheritingNetwork, previousGenerationNumber, xyPos)
         self.energy = Prey.INITIAL_ENERGY
         self.type = 1
-        self.lifeLength = 0  # Marker to see when prey can split
+        self.lifeLength = rdm.randint(0, Prey.LIFESPAN//10)  # Marker to see when prey can split
         self.colour = Cell.PREY_COLOUR
         self.rays = [-Prey.RAY_GAP*(Prey.RAY_COUNT//2) + Prey.RAY_GAP*i for i in range(Prey.RAY_COUNT)]
         self.rayCount = Prey.RAY_COUNT
