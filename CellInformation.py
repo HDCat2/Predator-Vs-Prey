@@ -27,7 +27,7 @@ class Map:
         self.doLogs = doLogging
 
         if self.doLogs:
-            self.filename = datetime.now().strftime("Predator-Vs-Prey/Histories/%Y-%m-%d-%H-%M-%S.txt")
+            self.filename = datetime.now().strftime("Histories/%Y-%m-%d-%H-%M-%S.txt")
             self.file = open(self.filename, "x")
 
         self.preyList = []
