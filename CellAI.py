@@ -11,11 +11,14 @@ class CellNet(nn.Module):
     NUM_HIDDEN_LAYER_NEURONS = 16
     def __init__(self, rayCount):
         super().__init__()
-        self.layers = nn.ModuleList()
-        self.layers.append(nn.Linear(rayCount + 1, CellNet.NUM_HIDDEN_LAYER_NEURONS, bias=False))
+        self.device = "cpu"
+        if torch.cuda.is_available():
+            self.device = "cuda:0"
+        self.layers = nn.ModuleList().to(self.device)
+        self.layers.append(nn.Linear(rayCount + 1, CellNet.NUM_HIDDEN_LAYER_NEURONS, bias=False).to(self.device))
         for i in range(CellNet.NUM_HIDDEN_LAYERS - 1):
-            self.layers.append(nn.Linear(CellNet.NUM_HIDDEN_LAYER_NEURONS, CellNet.NUM_HIDDEN_LAYER_NEURONS, bias=False))
-        self.layers.append(nn.Linear(CellNet.NUM_HIDDEN_LAYER_NEURONS, 2, False)) # Output layer corresponds to speed and angular velocity
+            self.layers.append(nn.Linear(CellNet.NUM_HIDDEN_LAYER_NEURONS, CellNet.NUM_HIDDEN_LAYER_NEURONS, bias=False).to(self.device))
+        self.layers.append(nn.Linear(CellNet.NUM_HIDDEN_LAYER_NEURONS, 2, False).to(self.device)) # Output layer corresponds to speed and angular velocity
 
         for layer in self.layers:
             nn.init.constant_(layer.weight, 0)
@@ -24,16 +27,12 @@ class CellNet(nn.Module):
 
     def forward(self, x, viewDistance):
         """ Feed input into the neural network and obtain movement information as output """
-        x = torch.FloatTensor([1 - i/viewDistance for i in x])
-        if torch.cuda.is_available():
-            x = x.to("cuda:0")
+        x = torch.FloatTensor([1 - i/viewDistance for i in x]).to(self.device)
         with torch.no_grad():
             for i in range(CellNet.NUM_HIDDEN_LAYERS):
-                x = F.relu(self.layers[i](x))
-            x = self.layers[-1](x)
-        if torch.cuda.is_available():
-            x = x.cpu()
-        return special.expit(x).tolist()
+                x = F.relu(self.layers[i](x)).to(self.device)
+            x = self.layers[-1](x).to(self.device)
+        return special.expit(x.cpu()).tolist()
 
     def mutate(self, generation):
         """ Randomly mutate the neural network according to generation number """
@@ -52,6 +51,6 @@ class CellNet(nn.Module):
                         curTensor[i][edge] += (rnd.random()-0.5) * decay
                         curTensor[i][edge] = special.expit(curTensor[i][edge])
 
-                self.layers[k].weight.data = torch.FloatTensor(curTensor)
+                self.layers[k].weight.data = torch.FloatTensor(curTensor).to(self.device)
 
             #self.linear[0].bias.data = torch.zeros((5,), requires_grad=True)  # bias is not a scalar here
