@@ -2,19 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import random as rnd
-import math
-
-def sigmoid(x):
-    return 2 / (1 + math.e ** -x) - 1
-
-def sigmoidInv(x):
-    return -math.log((2 / (x + 1 + 1e-8)) + 1e-7 - 1, math.e)
+from scipy import special
 
 class CellNet(nn.Module):
     INITIAL_MUTATION_RATE = 100
     DECAY_RATE = 1
     NUM_HIDDEN_LAYERS = 2 # Minimum of 1 hidden layer, otherwise change init
-    NUM_HIDDEN_LAYER_NEURONS = 64
+    NUM_HIDDEN_LAYER_NEURONS = 16
     def __init__(self, rayCount):
         super().__init__()
         self.layers = nn.ModuleList()
@@ -35,7 +29,7 @@ class CellNet(nn.Module):
             for i in range(CellNet.NUM_HIDDEN_LAYERS):
                 x = F.relu(self.layers[i](x))
             x = self.layers[-1](x)
-        return [sigmoid(val) for val in x.tolist()]
+        return special.expit(x).tolist()
 
     def mutate(self, generation):
         """ Randomly mutate the neural network according to generation number """
@@ -50,9 +44,9 @@ class CellNet(nn.Module):
                     for j in range(len(curTensor[i])):
                         if rnd.random() < decay:
 
-                            curTensor[i][j] = sigmoidInv(curTensor[i][j])
+                            curTensor[i][j] = special.logit(curTensor[i][j])
                             curTensor[i][j] *= (1 + (rnd.random()-0.5) * decay)
-                            curTensor[i][j] = sigmoid(curTensor[i][j])
+                            curTensor[i][j] = special.expit(curTensor[i][j])
 
                 self.layers[k].weight.data = torch.FloatTensor(curTensor)
 
