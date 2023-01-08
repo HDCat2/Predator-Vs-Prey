@@ -6,7 +6,7 @@ from scipy import special
 
 class CellNet(nn.Module):
     INITIAL_MUTATION_RATE = 1
-    DECAY_RATE = 1
+    DECAY_RATE = 10
     NUM_HIDDEN_LAYERS = 2 # Minimum of 1 hidden layer, otherwise change init
     NUM_HIDDEN_LAYER_NEURONS = 16
     def __init__(self, rayCount):
@@ -46,10 +46,9 @@ class CellNet(nn.Module):
                 for i in range(len(curTensor)):
                     for j in range(int(len(curTensor[i]) * decay)):
                         edge = rnd.randint(0, len(curTensor[i]) - 1)
-
-                        curTensor[i][edge] = special.logit(curTensor[i][edge])
+                        curTensor[i][edge] = special.logit((curTensor[i][edge]+1)/2)
                         curTensor[i][edge] += (rnd.random()-0.5) * decay
-                        curTensor[i][edge] = special.expit(curTensor[i][edge])
+                        curTensor[i][edge] = special.expit(curTensor[i][edge]*2-1)
 
                 self.layers[k].weight.data = torch.FloatTensor(curTensor).to(self.device)
 

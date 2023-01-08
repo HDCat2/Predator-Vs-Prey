@@ -28,7 +28,7 @@ class Map:
         self.doLogs = doLogging
 
         if self.doLogs:
-            self.filename = datetime.now().strftime("Histories/%Y-%m-%d-%H-%M-%S.txt")
+            self.filename = datetime.now().strftime(__file__ + "\..\Histories\%Y-%m-%d-%H-%M-%S.txt")
             self.file = open(self.filename, "x")
 
         self.preyList = []
@@ -123,6 +123,7 @@ class Map:
         if self.frameCount % Map.HISTORY_INTERVAL == 0:
             self.timer = time()
             self.updateHistory()
+
             for prey in self.preyList:
                 prey.mutate()
 
@@ -248,8 +249,8 @@ class Cell:
         if distance > Cell.CELL_RADIUS * 2:
             return False
 
-        if self.type == otherCell.type:
-            self.repel(otherCell)
+        #if self.type == otherCell.type:
+            #self.repel(otherCell)
 
         return True
 
@@ -294,12 +295,14 @@ class Cell:
         apply a movement on both cells directly away from each other that will be processed
         in `move()`.
         """
-        v = np.subtract(otherCell.xyPos, self.xyPos)
+        otherCellCoords = self.wrapCoords(otherCell.xyPos)
+
+        v = np.subtract(otherCellCoords, self.xyPos)
         distance = np.linalg.norm(v)
 
         if distance == 0:
             self.collisionModifier[1] += Cell.MAXIMUM_SPEED
-            otherCell.collisionModifier[1] -= Cell.MAXIMUM_SPEED
+            #therCell.collisionModifier[1] -= Cell.MAXIMUM_SPEED
             return
 
         proximityFactor = 1 - distance / (Cell.CELL_RADIUS * 2)
@@ -308,8 +311,8 @@ class Cell:
         
         self.collisionModifier[0] -= v[0]
         self.collisionModifier[1] -= v[1]
-        otherCell.collisionModifier[0] += v[0]
-        otherCell.collisionModifier[1] += v[1]
+        #otherCell.collisionModifier[0] += v[0]
+        #otherCell.collisionModifier[1] += v[1]
 
     def getIntersectionLength(self, cellAngle, dist, rayIdx, otherCell):
         """ Helper function for `getVision()`
@@ -437,7 +440,7 @@ class Cell:
         #draw outward rays
 
 class Predator(Cell):
-    MAXIMUM_DIGESTION_TIMER = 100
+    MAXIMUM_DIGESTION_TIMER = 20
     MAXIMUM_ENERGY = 100
     INITIAL_ENERGY = 50
     RAY_COUNT = 15
@@ -490,7 +493,7 @@ class Prey(Cell):
     MAXIMUM_ENERGY = 100
     INITIAL_ENERGY = 50
     LIFESPAN = 300
-    RAY_COUNT = 15
+    RAY_COUNT = 14
     RAY_GAP = 0.2
     VIEW_DISTANCE = 50
 
