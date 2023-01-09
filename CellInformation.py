@@ -137,10 +137,10 @@ class Map:
         screen.fill(self.colour)
 
         for prey in self.preyList:
-            prey.draw(screen, True)
+            prey.draw(screen, False)
 
         for pred in self.predList:
-            pred.draw(screen, True)
+            pred.draw(screen, False)
 
 
 class Cell:
@@ -329,18 +329,23 @@ class Cell:
         if cu.minDistanceOfRayFromPoint(self.xyPos, [math.cos(rayAngle), math.sin(rayAngle)], otherCellCoords) > Cell.CELL_RADIUS:
             return self.viewDistance
 
+
         adjustedRayAngle = abs(cellAngle - rayAngle) # angle in triangle that we will try to compute intersection length with
         if adjustedRayAngle <= 0.000001:
             return dist - Cell.CELL_RADIUS
-        
+
+
         # Use cosine law to compute length of ray from origin cell to intersection
         disc = (2 * dist * math.cos(adjustedRayAngle))**2 - 4 * (dist**2 - Cell.CELL_RADIUS**2)
+
         if disc < 0:
             disc = 0 # It's probably the tangent case - set to 0
         
         root = (2 * dist * math.cos(adjustedRayAngle) - disc**0.5)/2
         if root < 0:
             root = 0 # It's probably an FP error caused by the cells being too close - set to 0
+
+
         return root
 
     def getVisionOfCell(self, otherCell):
@@ -352,21 +357,31 @@ class Cell:
         """
         outputTensor = [self.VIEW_DISTANCE for i in range(self.rayCount)]
         otherCellCoords = self.wrapCoords(otherCell.xyPos)
+
         dist = np.linalg.norm(np.subtract(otherCellCoords, self.xyPos))
 
         # Check if the center of the cell is inside the other cell
         if dist < Cell.CELL_RADIUS:
             return [0 for i in range(self.rayCount)]
-        
+
         # Check if cell is out of range
         if otherCell.type == self.type or dist >= self.viewDistance + Cell.CELL_RADIUS:
             return outputTensor
 
-        cellAngle = math.atan2(otherCellCoords[1] - self.xyPos[1], otherCellCoords[0] - self.xyPos[0])
+        cellAngle = math.atan2(otherCellCoords[1] - self.xyPos[1], otherCellCoords[0] - self.xyPos[0]) % (math.pi*2)
 
         # Attempt to find 2 adjacent rays that hit `otherCell`
-        rayLowerIndex = int((cellAngle - self.angle) // self.rayGap + self.rayCount // 2)
+        sign = 1
+        if cellAngle < self.angle:
+            sign = -1
+        rayLowerIndex = int(sign * (abs(cellAngle - self.angle) % (math.pi*2)) // self.rayGap + self.rayCount // 2)
         rayUpperIndex = rayLowerIndex + 1
+
+        if self.selected:
+            print(123)
+            print(otherCell)
+            print(outputTensor)
+            print(rayLowerIndex, cellAngle, self.angle)
         
         # Decrease rayLowerIndex until we stop finding rays that intersect
         if 0 <= rayLowerIndex < self.rayCount:
@@ -385,13 +400,16 @@ class Cell:
                     rayUpperIndex += 1
                 else:
                     break
+
+
+
         return outputTensor
 
     def getVision(self):
         """ Get vision of all cells as input for neural network """
         inputTensor = [self.viewDistance for i in range(self.rayCount)]
         for otherCell in Cell.CELL_SETS[self.getSetIndex()[0]][self.getSetIndex()[1]]:
-            if otherCell == self:
+            if otherCell.type == self.type:
                 continue
             otherCellVision = self.getVisionOfCell(otherCell)
             inputTensor = [min(inputTensor[i], otherCellVision[i]) for i in range(self.rayCount)]
